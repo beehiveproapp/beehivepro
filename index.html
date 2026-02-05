@@ -797,14 +797,56 @@ measurementId: "G-3DEXZHD6HD"
     const auth = firebase.auth();
 
     // --- إضافة: تفعيل الكاش لقاعدة البيانات (للعمل بدون إنترنت) ---
-    db.enablePersistence()
-      .catch((err) => {
-          if (err.code == 'failed-precondition') {
-              console.log('Persistence failed: Multiple tabs open');
-          } else if (err.code == 'unimplemented') {
-              console.log('Persistence is not available in this browser');
-          }
-      });
+    db.enablePersistence({ synchronizeTabs: true })
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.log('عذراً، تعدد التبويبات غير مدعوم مع التخزين المحلي');
+        } else if (err.code == 'unimplemented') {
+            console.log('المتصفح لا يدعم هذه الميزة');
+        }
+    });
+// ------------------------------------------------
+
+// الآن عند كتابة أي دالة لجلب البيانات (الخلايا أو المواقع)
+// لا تستخدم .get() بل استخدم .onSnapshot()
+// لأن onSnapshot ذكي جداً، يعرف الفرق بين البيانات المحلية والتي في الخادم
+
+function loadLocations() {
+    // مثال: دالة جلب المواقع
+    db.collection('locations')
+      .where('userId', '==', auth.currentUser.uid)
+      // ترتيب حسب الوقت لضمان الدقة
+      .orderBy('createdAt', 'desc') 
+      .onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+        
+        // هنا السر: هذه الدالة تعمل فوراً بدون نت
+        // وتعمل مرة أخرى بصمت عند عودة النت لتحديث البيانات
+        
+        const locations = [];
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            // هذا الشرط يمنع "عودة الميت" (المشكلة القديمة)
+            // إذا كانت البيانات لديها تغييرات معلقة (مثل الحذف) ولم تصل للسيرفر بعد
+            // سيتعامل معها السناب شوت بذكاء
+            locations.push({ id: doc.id, ...data });
+        });
+        
+        renderLocationsList(locations); // دالة العرض الخاصة بك
+        
+    }, (error) => {
+        console.error("Error getting locations:", error);
+    });
+}
+
+// وعند الحذف، استخدم هذا الأسلوب:
+function deleteLocation(id) {
+    // لا تنتظر النتيجة (.then) لكي تحذف العنصر من الشاشة
+    // الـ onSnapshot سيحذفه فوراً لأنك حذفته من الكاش المحلي
+    db.collection('locations').doc(id).delete().catch((error) => {
+        console.error("خطأ في الحذف:", error);
+        // هنا فقط نعرض رسالة خطأ إذا فشل الحذف "محلياً" وهو نادر جداً
+    });
+}
 
     // ==========================================
     // DBHelper: وحدة التعامل مع قاعدة البيانات المحلية

@@ -38,16 +38,35 @@ self.addEventListener('activate', (event) => {
 // استراتيجية الجلب (Network First, falling back to Cache)
 // نحاول الاتصال بالإنترنت أولاً، إذا فشل نأخذ من الكاش
 self.addEventListener('fetch', (event) => {
-  // استثناء طلبات Firebase والمواقع الخارجية الديناميكية من الكاش الصارم
-  if (event.request.url.includes('firestore.googleapis.com') || 
-      event.request.url.includes('googleapis.com')) {
-      return; // اترك المتصفح يتعامل معها (فايربيس لديه نظامه الخاص للأوفلاين)
+  const requestUrl = new URL(event.request.url);
+
+  // 1. استثناء طلبات Firebase Firestore/Auth
+  // (Firestore يدير نفسه بنفسه بذكاء، لا تدع Service Worker يتدخل)
+  if (requestUrl.origin.includes('firestore.googleapis.com') || 
+      requestUrl.origin.includes('identitytoolkit.googleapis.com') ||
+      requestUrl.href.includes('firebase')) {
+    return; // دع الشبكة أو كاش المتصفح يتعامل معها
   }
 
+  // 2. استراتيجية Stale-While-Revalidate للملفات الثابتة (HTML, CSS, JS)
+  // هذا يجعل التطبيق يفتح فوراً بدون نت، ويحدث نفسه إذا وجد نت
   event.respondWith(
-    fetch(event.request)
-      .catch(() => {
-        return caches.match(event.request);
-      })
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // تحديث الكاش بالنسخة الجديدة في الخلفية
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache);
+            });
+        }
+        return networkResponse;
+      }).catch(() => {
+          // إذا فشل الاتصال، لا مشكلة، لدينا الكاش
+      });
+
+      // إرجاع الكاش فوراً إذا وجد، وإلا ننتظر الشبكة
+      return cachedResponse || fetchPromise;
+    })
   );
 });
