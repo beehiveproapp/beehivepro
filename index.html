@@ -1,0 +1,2858 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>إدارة المناحل المتقدمة (نسخة احترافية)</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f39c12">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <style>
+        /* CSS: تم الحفاظ على الأنماط الأصلية مع إضافة متغيرات الوضع الليلي */
+        :root {
+            --bg-color: #f0f2f5;
+            --content-bg-color: #ffffff;
+            --sidebar-bg-color: #2c3e50;
+            --sidebar-text-color: #ecf0f1;
+            --text-color: #34495e;
+            --header-color: #f39c12;
+            --header-alt-color: #3498db;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --info-color: #3498db;
+            --strong-hive-color: #27ae60;
+            --weak-hive-color: #c0392b;
+            --excess-color: #9b59b6;
+            --deficit-color: #e67e22;
+        }
+        body.dark-mode {
+            --bg-color: #1a202c;
+            --content-bg-color: #2d3748;
+            --sidebar-bg-color: #1c2a3a;
+            --sidebar-text-color: #a0aec0;
+            --text-color: #e2e8f0;
+            --border-color: #4a5568;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            direction: rtl;
+            display: flex;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .app-hidden { display: none !important; }
+        .feature-hidden { display: none !important; }
+
+        .main-content-wrapper { display: flex; width: 100%; }
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg-color);
+            color: var(--sidebar-text-color);
+            padding: 15px;
+            box-shadow: -2px 0 8px var(--shadow-color);
+            transition: width 0.3s ease;
+            flex-shrink: 0;
+            overflow-y: auto;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+        }
+        .sidebar.collapsed { width: 60px; }
+        .sidebar.collapsed .sidebar-text, .sidebar.collapsed .menu-group-header span:first-child, .sidebar.collapsed .site-button-controls, .sidebar.collapsed .site-name-span { display: none; }
+        .sidebar-header { text-align: center; }
+        .sidebar h2 { color: var(--header-color); text-align: center; margin: 0 0 20px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .menu-toggle-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 5px; width: 100%; text-align: center; margin-bottom: 10px; }
+        .menu-group { margin-bottom: 10px; }
+        .menu-group-header {
+            padding: 10px; cursor: pointer; display: flex;
+            align-items: center; font-weight: bold; border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        .menu-group-header:hover { background-color: rgba(255,255,255,0.1); }
+        .menu-group-content { max-height: 0; transition: max-height 0.3s ease-out; overflow: hidden; background-color: rgba(0,0,0,0.2); border-radius: 6px; }
+        .menu-group-content.open { max-height: 500px; }
+        .menu-button, .site-button {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 10px; background: none; color: var(--sidebar-text-color);
+            border: none; text-align: right; border-radius: 4px;
+            cursor: pointer; transition: background-color 0.2s, color 0.2s;
+        }
+        .menu-button i, .site-button i { width: 20px; text-align: center; }
+        .menu-button:hover, .site-button:hover { background-color: var(--header-color); color: white; }
+        .site-button.active, .menu-button.active { background-color: var(--header-color); color: white; font-weight: bold; }
+        
+        /* -- Site Management UI -- */
+        .site-button-controls { display: flex; align-items: center; gap: 8px; margin-right: auto; opacity: 0; transition: opacity 0.2s; }
+        .site-button:hover .site-button-controls, .site-button.active .site-button-controls { opacity: 1; }
+        .site-control-btn { background: none; border: none; color: var(--sidebar-text-color); cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; }
+        .site-control-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+        .site-name-input {
+            background: rgba(0,0,0,0.4); border: 1px solid var(--header-color); color: white;
+            border-radius: 4px; padding: 2px 5px; font-family: inherit; font-size: 1em; width: 120px;
+        }
+        
+        .content-area { flex-grow: 1; padding: 25px; overflow-y: auto; }
+        .container { background: var(--content-bg-color); padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px var(--shadow-color); min-height: calc(100vh - 50px); }
+        h1, h2, h3 { color: var(--header-color); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        
+        /* --- Input Group Style for +/- Buttons --- */
+        .input-group {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .input-group input {
+            padding: 10px;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            width: 100%;
+            text-align: center;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            flex-grow: 1;
+            /* إزالة أسهم التحديث الافتراضية */
+            -moz-appearance: textfield;
+        }
+        .input-group input::-webkit-outer-spin-button,
+        .input-group input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .input-group button {
+            background-color: var(--header-alt-color);
+            color: white;
+            padding: 10px;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 16px;
+            width: 40px;
+            flex-shrink: 0;
+        }
+        .input-group button:hover {
+            opacity: 0.8;
+            transform: none;
+        }
+        /* --- End Input Group Style --- */
+
+        input, select, textarea {
+            padding: 10px; margin: 5px 0; border: 1px solid var(--border-color); border-radius: 6px; width: 100%;
+            background-color: var(--bg-color); color: var(--text-color); font-size: 16px;
+        }
+        button { background-color: var(--header-alt-color); color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; transform: none; }
+        
+        .table-wrapper { width: 100%; overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: right; vertical-align: middle; }
+        th { background-color: var(--bg-color); color: var(--text-color); font-weight: bold; }
+        th.sortable { cursor: pointer; }
+        td.actions-cell { min-width: 150px; text-align: center; }
+        .health-score { font-weight: bold; text-align: center; padding: 5px; border-radius: 5px; color: white; }
+        
+        .main-tabs { display: flex; gap: 5px; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; overflow-x: auto;}
+        .tab-button { background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 15px; cursor: pointer; font-size: 16px; color: var(--text-color); white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;}
+        .tab-button.active { border-bottom-color: var(--header-color); color: var(--header-color); font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .kpi-card { background: var(--bg-color); padding: 20px; border-radius: 8px; text-align: center; }
+        .kpi-card h3 { margin: 0 0 10px; color: var(--text-color); font-size: 18px; }
+        .kpi-value { font-size: 36px; font-weight: bold; }
+        .kpi-card .kpi-value.strong { color: var(--strong-hive-color); }
+        .kpi-card .kpi-value.weak { color: var(--weak-hive-color); }
+        .chart-container { background: var(--bg-color); padding: 20px; border-radius: 8px; }
+        .pie-chart { width: 150px; height: 150px; border-radius: 50%; margin: 20px auto; position: relative; }
+        .pie-chart-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-color); width: 80px; height: 80px; border-radius: 50%; }
+        .chart-legend { list-style: none; padding: 0; display: flex; justify-content: center; gap: 15px; }
+        .chart-legend li { display: flex; align-items: center; }
+        .legend-color { width: 15px; height: 15px; display: inline-block; margin-left: 8px; border-radius: 3px; }
+        
+        .todo-container { background: var(--bg-color); padding: 20px; border-radius: 8px; }
+        #todo-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+        #todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        .delete-task { background: none; border: none; color: var(--danger-color); cursor: pointer; padding: 0; margin: 0; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+        .modal-box { background: var(--content-bg-color); padding: 0; border-radius: 12px; width: 90%; max-width: 600px; text-align: center; box-shadow: 0 5px 25px rgba(0,0,0,0.2); animation: scaleIn 0.3s ease; display: flex; flex-direction: column; max-height: 90vh; }
+        .modal-header { padding: 15px 25px; border-bottom: 1px solid var(--border-color); text-align: right; position: relative; flex-shrink: 0;}
+        .modal-header h3 { margin: 0; }
+        .modal-close-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); padding: 0 5px; }
+        .modal-body { padding: 20px 25px; overflow-y: auto; }
+        .modal-buttons { padding: 15px 25px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
+        
+        .analysis-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .chart-section { background: var(--bg-color); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px var(--shadow-color); }
+        .recommendation-card { color: var(--text-color); padding: 15px; border-radius: 8px; margin-bottom: 10px; border-right: 5px solid; }
+        .recommendation-card h4 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .recommendation-card p { font-size: 0.9em; margin-bottom: 0;}
+        .recommendation-card.danger { border-color: var(--danger-color); background: rgba(231, 76, 60, 0.1); }
+        .recommendation-card.success { border-color: var(--strong-hive-color); background: rgba(39, 174, 96, 0.1); }
+        .recommendation-card.warning { border-color: var(--warning-color); background: rgba(241, 196, 15, 0.1); }
+        .recommendation-card.info { border-color: var(--info-color); background: rgba(52, 152, 219, 0.1); }
+        .recommendation-card.excess { border-color: var(--excess-color); background: rgba(155, 89, 182, 0.1); }
+        .recommendation-card.deficit { border-color: var(--deficit-color); background: rgba(230, 126, 34, 0.1); }
+        
+        .chart-wrapper { min-height: 350px; position: relative; }
+        .chart-wrapper:not(.active-chart) { display: none; }
+
+        .quick-actions-container { position: relative; display: flex; align-items: center; justify-content: space-between; }
+        #quick-actions-btn { background-color: var(--header-color); }
+        #quick-actions-menu {
+            display: none; position: absolute; top: 100%; left: 0; background-color: var(--content-bg-color);
+            border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 5px 15px var(--shadow-color);
+            z-index: 101; min-width: 220px; overflow: hidden;
+        }
+        .quick-action-item { padding: 10px 15px; cursor: pointer; transition: background-color 0.2s; display: flex; gap: 10px; align-items: center;}
+        .quick-action-item:not(:last-child) { border-bottom: 1px solid var(--border-color); }
+        .quick-action-item:hover { background-color: var(--bg-color); }
+
+        #firebase-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); z-index: 2000; display: none;
+            align-items: center; justify-content: center;
+        }
+        #firebase-box { 
+            background: var(--content-bg-color); padding: 30px; border-radius: 12px; 
+            width: 90%; max-width: 400px; text-align: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #notification-container { position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .notification {
+            padding: 15px 20px; border-radius: 8px; color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.5s ease-out;
+            display: flex; align-items: center; gap: 10px; min-width: 280px;
+        }
+        .notification.info { background-color: var(--info-color); }
+        .notification.success { background-color: var(--success-color); }
+        .notification.warning { background-color: var(--warning-color); color: #333; }
+        .notification.error { background-color: var(--danger-color); }
+        
+        .star-season-card { background: var(--bg-color); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-right: 5px solid var(--header-color); }
+        .star-season-card h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .star-season-card .date-range { color: var(--text-color); font-style: italic; font-size: 0.9em; margin-bottom: 10px;}
+        .star-season-card .tips-list { padding-right: 20px; }
+        .upcoming-seasons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .upcoming-card { background: var(--bg-color); padding: 15px; border-radius: 8px; }
+        .upcoming-card h4 { margin-top: 0; color: var(--header-alt-color); }
+        .upcoming-card p { font-size: 0.9em; margin: 0; }
+        .settings-card { padding: 15px; background:var(--bg-color); border-radius:8px; margin-bottom: 15px; }
+        
+        /* -- Modern Settings Toggles -- */
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #7f8c8d; transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--header-alt-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* -- Modern Hive Form Tabs -- */
+        .form-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .form-tab-button { background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--text-color); border-bottom: 3px solid transparent; font-size: 15px; display: inline-flex; align-items: center; gap: 6px; }
+        .form-tab-button.active { color: var(--header-alt-color); border-bottom-color: var(--header-alt-color); }
+        .form-tab-content { display: none; }
+        .form-tab-content.active { display: block; animation: fadeIn 0.5s; }
+
+        .hive-list-controls { display: flex; gap: 15px; margin-bottom: 15px; align-items: center; }
+        #hive-filter-input { max-width: 300px; margin: 0; }
+
+        /* -- Copyright Footer -- */
+        .app-footer { text-align: center; padding: 15px; margin-top: 20px; font-size: 0.9em; color: var(--text-color); opacity: 0.7; }
+        .app-footer p { margin: 0; }
+        
+        /* -- Honeycom Styles -- */
+        .honeycomb-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            margin: 20px auto;
+            width: 280px;
+        }
+        .honeycomb-cell {
+            width: 80px;
+            height: 92.38px;
+            background-color: var(--bg-color);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            border: 1px solid var(--border-color);
+        }
+        .honeycomb-cell:hover {
+            background-color: var(--header-alt-color);
+            transform: scale(1.1);
+        }
+        .honeycomb-cell.pinned {
+            background-color: rgba(52, 152, 219, 0.3);
+            cursor: default;
+        }
+        .honeycomb-cell i {
+            font-size: 24px;
+            color: var(--header-color);
+        }
+
+        /* Firebase Auth UI */
+        .auth-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            background: var(--bg-color);
+            text-align: center;
+        }
+        .auth-status.signed-in {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid var(--success-color);
+        }
+        .auth-status.signed-out {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid var(--warning-color);
+        }
+        .auth-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content-wrapper { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 5px 10px; overflow-x: auto; }
+            .sidebar.collapsed { width: 100%; }
+            .sidebar-header, .sidebar-footer { display: none; }
+            .sidebar-main { display: flex; flex-shrink: 0; }
+            .menu-toggle-btn { display: block; }
+            .content-area { padding: 10px; }
+            .container { padding: 15px; min-height: calc(100vh - 80px); }
+            h1 { font-size: 1.5rem; }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
+            .kpi-value { font-size: 28px; }
+            .tab-button { padding: 8px 10px; font-size: 14px; }
+            .hive-list-controls { flex-direction: column; align-items: stretch; }
+            .auth-buttons { flex-direction: column; }
+        }
+        @media (max-width: 480px) {
+             .dashboard-grid { grid-template-columns: 1fr; }
+             .analysis-grid { grid-template-columns: 1fr; }
+             .modal-buttons { flex-direction: column; }
+             .modal-buttons button { width: 100%; margin: 5px 0; }
+             .app-footer { font-size: 0.8em; }
+        }
+/* تنسيقات حقل كلمة المرور مع العين */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 10px;
+}
+.password-wrapper input {
+    margin: 0; /* إلغاء الهامش لأننا نستخدم wrapper */
+    padding-left: 40px; /* مساحة للأيقونة جهة اليسار لأن الموقع RTL */
+}
+.password-toggle-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #7f8c8d;
+    z-index: 2;
+    padding: 5px;
+}
+.password-toggle-icon:hover {
+    color: var(--header-alt-color);
+}
+    </style>
+</head>
+<body>
+
+<div id="firebase-modal">
+    <div id="firebase-box">
+        <h2 style="color:var(--header-color);"><i class="fas fa-cloud"></i> مزامنة السحابة</h2>
+        <div id="firebase-status" class="auth-status signed-out">
+            <p>أنت غير مسجل الدخول</p>
+            <p style="font-size: 0.9em;">تسجيل الدخول اختياري للمزامنة التلقائية بين الأجهزة</p>
+        </div>
+        <div class="auth-buttons">
+            <button onclick="signInWithGoogle()" style="background-color: #DB4437;">
+                <i class="fab fa-google"></i> تسجيل الدخول بحساب Google
+            </button>
+            <button onclick="signInWithEmail()" style="background-color: var(--info-color);">
+                <i class="fas fa-envelope"></i> تسجيل الدخول بالبريد الإلكتروني
+            </button>
+            <button onclick="signUpWithEmail()" style="background-color: var(--success-color);">
+                <i class="fas fa-user-plus"></i> إنشاء حساب جديد
+            </button>
+            <button onclick="skipLogin()" style="background-color: #7f8c8d;">
+                <i class="fas fa-forward"></i> تخطي وتشغيل محلياً
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="main-content-wrapper" id="main-app-content">
+    <div class="sidebar" id="main-sidebar">
+        <div class="sidebar-header">
+            <button class="menu-toggle-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h2><i class="fas fa-box-archive"></i> <span class="sidebar-text">إدارة المناحل</span></h2>
+        </div>
+        <div class="sidebar-main">
+            <div class="menu-group">
+                <div class="menu-group-header" onclick="toggleMenu(this)"><i class="fas fa-map-marker-alt"></i> <span class="sidebar-text">المواقع</span></div>
+                <div class="menu-group-content" id="sites-menu-content"></div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" onclick="toggleMenu(this)"><i class="fas fa-chart-pie"></i> <span class="sidebar-text">التحليلات</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" onclick="beehiveManager.getActive().showMainTab('analysis-tab')"><i class="fas fa-search"></i> <span class="sidebar-text">تحليل متقدم</span></button>
+                    <button class="menu-button" onclick="showGlobalStatsView()"><i class="fas fa-globe"></i> <span class="sidebar-text">إحصائيات شاملة</span></button>
+                    <button class="menu-button" onclick="showSiteComparisonView()"><i class="fas fa-balance-scale"></i> <span class="sidebar-text">مقارنة المواقع</span></button>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" onclick="toggleMenu(this)"><i class="fas fa-database"></i> <span class="sidebar-text">البيانات</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" onclick="importData()"><i class="fas fa-file-import"></i> <span class="sidebar-text">استيراد بيانات</span></button>
+                    <button class="menu-button" onclick="exportData()"><i class="fas fa-file-export"></i> <span class="sidebar-text">تصدير بيانات</span></button>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" onclick="toggleMenu(this)"><i class="fas fa-satellite-dish"></i> <span class="sidebar-text">التواصل</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" onclick="openHoneycom()"><i class="fas fa-paper-plane"></i> <span class="sidebar-text">خلية التواصل</span></button>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+             <button class="menu-button" onclick="beehiveManager.getActive().showMainTab('settings-tab')">
+                 <i class="fas fa-cog"></i> <span class="sidebar-text">الإعدادات</span>
+             </button>
+             
+             <button class="menu-button" onclick="showFirebaseAuthModal()">
+                 <i class="fas fa-cloud"></i> <span class="sidebar-text">المزامنة</span>
+             </button>
+             
+             <button class="menu-button" onclick="confirmSignOut()" style="color: var(--danger-color);">
+                 <i class="fas fa-sign-out-alt"></i> <span class="sidebar-text">خروج</span>
+             </button>
+        </div>
+    </div>
+    
+    <div class="content-area">
+        <div class="container">
+            <h1 id="active-location-title" style="text-align: center; margin-top: 0;"></h1>
+
+            <div id="standard-view-wrapper">
+                <div class="main-tabs">
+                    <button class="tab-button active" onclick="beehiveManager.getActive().showMainTab('dashboard-tab')"><i class="fas fa-tachometer-alt"></i> لوحة المعلومات</button>
+                    <button class="tab-button" onclick="beehiveManager.getActive().showMainTab('hives-tab')"><i class="fas fa-edit"></i> قائمة الخلايا والإدخال</button>
+                    <button class="tab-button star-feature" id="stars-menu-btn" onclick="beehiveManager.getActive().showMainTab('stars-tab')"><i class="fas fa-star"></i> النجوم الفلكية</button>
+                    <button class="tab-button" id="analysis-menu-btn" onclick="beehiveManager.getActive().showMainTab('analysis-tab')"><i class="fas fa-chart-line"></i> التحليلات المتقدمة</button>
+                    <button class="tab-button" id="settings-menu-btn" onclick="beehiveManager.getActive().showMainTab('settings-tab')"><i class="fas fa-cog"></i> الإعدادات</button>
+                </div>
+
+                <div id="dashboard-tab" class="tab-content active">
+                    <div id="sync-status-indicator" class="auth-status signed-out" style="margin-bottom: 20px; display: none;">
+                        <i class="fas fa-cloud"></i> <span id="sync-status-text">جاري المزامنة...</span>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="kpi-card"><h3>إجمالي الخلايا</h3><div id="db-total-hives" class="kpi-value">0</div></div>
+                        <div class="kpi-card"><h3>متوسط الإطارات</h3><div id="db-avg-frames" class="kpi-value">0</div></div>
+                        <div class="kpi-card"><h3>خلايا قوية (>6 إطارات)</h3><div id="db-strong-hives" class="kpi-value strong">0%</div></div>
+                        <div class="kpi-card"><h3>خلايا ضعيفة (<4 إطارات)</h3><div id="db-weak-hives" class="kpi-value weak">0%</div></div>
+                    </div>
+                    
+                    <div id="site-recommendations-container" class="recommendation-feature" style="margin-top: 20px;">
+                        <h3><i class="fas fa-lightbulb"></i> التوصيات الإدارية الآلية</h3>
+                        <div id="site-recommendations-list"></div>
+                    </div>
+
+                    <div class="dashboard-grid" style="margin-top: 20px;">
+                        <div class="chart-container">
+                            <h3>توزيع حالة الملكات</h3>
+                            <div class="pie-chart" id="queen-pie-chart"><div class="pie-chart-inner"></div></div>
+                            <ul class="chart-legend">
+                                <li><span class="legend-color" style="background:var(--success-color);"></span>ملكة</li>
+                                <li><span class="legend-color" style="background:var(--warning-color);"></span>بدون ملكة</li>
+                                <li><span class="legend-color" style="background:var(--danger-color);"></span>مكذبة</li>
+                            </ul>
+                        </div>
+                        <div class="todo-container">
+                            <h3><i class="fas fa-tasks"></i> قائمة المهام للموقع</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="todo-input" placeholder="أضف مهمة جديدة...">
+                                <button onclick="beehiveManager.getActive().addTask()">إضافة</button>
+                            </div>
+                            <ul id="todo-list"></ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="hives-tab" class="tab-content">
+                    <div class="quick-actions-container">
+                        <h2>إضافة / تعديل خلية</h2>
+                        <div>
+                           <button onclick="beehiveManager.getActive().refreshUI()" style="background-color: var(--info-color);" title="تحديث البيانات يدوياً"><i class="fas fa-sync-alt"></i> تحديث</button>
+                           <button id="quick-actions-btn" onclick="toggleQuickActionsMenu()">إجراءات سريعة <i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div id="quick-actions-menu">
+                            <div class="quick-action-item" onclick="performQuickAction(1, 'تم إضافة شمع اساس.', 'frames', 0)"><i class="fas fa-plus" style="color:var(--success-color);"></i> +شمع اساس (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(1, 'تم إضافة إطار ممطوط.', 'frames', 0)"><i class="fas fa-plus" style="color:var(--success-color);"></i> +ممطوط (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(1, 'تم إضافة إطار حلب.', 'frames', 0)"><i class="fas fa-plus" style="color:var(--success-color);"></i> +حلب (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(1, 'تم إضافة إطار عسل.', 'honey', 1)"><i class="fas fa-plus" style="color:var(--success-color);"></i> +عسل (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(1, 'تم إضافة إطار كرس.', 'pollen', 1)"><i class="fas fa-plus" style="color:var(--success-color);"></i> +كرس (فوري)</div>
+                            <hr style="margin: 2px 0; border-color: var(--border-color);">
+                            <div class="quick-action-item" onclick="addReviewTask('شمع اساس', 0)"><i class="fas fa-flag" style="color:var(--info-color);"></i> علم لوضع شمع أساس</div>
+                            <div class="quick-action-item" onclick="addReviewTask('تقسيم', 0)"><i class="fas fa-cut" style="color:var(--warning-color);"></i> علم للتقسيم</div>
+                            <hr style="margin: 2px 0; border-color: var(--border-color);">
+                            <div class="quick-action-item" onclick="performQuickAction(-1, 'تم سحب إطار شمع اساس.', 'frames', 0)"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -شمع اساس (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(-1, 'تم سحب إطار ممطوط.', 'frames', 0)"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -ممطوط (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(-1, 'تم سحب إطار حلب.', 'frames', 0)"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -حلب (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(-1, 'تم سحب إطار عسل.', 'honey', -1)"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -عسل (فوري)</div>
+                            <div class="quick-action-item" onclick="performQuickAction(-1, 'تم سحب إطار كرس.', 'pollen', -1)"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -كرس (فوري)</div>
+                        </div>
+                        </div>
+                    
+                    <div class="form-tabs">
+                        <button class="form-tab-button active" onclick="showFormTab('main-info', this)"><i class="fas fa-home"></i> معلومات أساسية</button>
+                        <button class="form-tab-button" onclick="showFormTab('queen-info', this)"><i class="fas fa-chess-queen"></i> بيانات الملكة</button>
+                        <button class="form-tab-button" onclick="showFormTab('storage-info', this)"><i class="fas fa-archive"></i> المخزون</button>
+                    </div>
+
+                    <div id="main-info-form" class="form-tab-content active">
+                        <div class="form-grid">
+                            <div><label for="hive-id">رقم الخلية:</label><input type="number" id="hive-id" placeholder="123" min="1"></div>
+                            
+                            <div>
+                                <label for="frames">عدد الإطارات:</label>
+                                <div class="input-group">
+                                    <button type="button" onclick="changeValue('frames', -1)">-</button>
+                                    <input type="number" id="frames" min="1" max="10" value="5">
+                                    <button type="button" onclick="changeValue('frames', 1)">+</button>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                    <div id="queen-info-form" class="form-tab-content">
+                        <div class="form-grid">
+                            <div><label for="queen-status">حالة الملكة:</label><select id="queen-status"><option value="ملكة">بها ملكة</option><option value="بدون ملكة">بدون ملكة</option><option value="مكذبة">مكذبة</option></select></div>
+                            <div><label for="queen-year">سنة الملكة:</label><input type="number" id="queen-year" placeholder="2024" min="2020"></div>
+                            <div><label for="queen-marked">هل الملكة معلمة؟</label><select id="queen-marked"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
+                        </div>
+                    </div>
+                    <div id="storage-info-form" class="form-tab-content">
+                         <div class="form-grid">
+                            <div>
+                                <label for="honey-frames">إطارات عسل مختوم:</label>
+                                <div class="input-group">
+                                    <button type="button" onclick="changeValue('honey-frames', -1)">-</button>
+                                    <input type="number" id="honey-frames" min="0" value="0">
+                                    <button type="button" onclick="changeValue('honey-frames', 1)">+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="pollen-frames">إطارات كرس (خبز النحل):</label>
+                                <div class="input-group">
+                                    <button type="button" onclick="changeValue('pollen-frames', -1)">-</button>
+                                    <input type="number" id="pollen-frames" min="0" value="0">
+                                    <button type="button" onclick="changeValue('pollen-frames', 1)">+</button>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;"><label for="notes">إضافة ملاحظة جديدة (سيتم حفظها مع التاريخ):</label><textarea id="notes" rows="3" placeholder="مثال: تم إضافة إطار حضنة"></textarea></div>
+                    <button onclick="beehiveManager.getActive().saveHive()"><i class="fas fa-save"></i> إضافة سجل فحص جديد</button>
+                    <hr>
+                    <h2><i class="fas fa-archive"></i> قائمة الخلايا (آخر فحص)</h2>
+                    <div class="hive-list-controls">
+                        <input type="text" id="hive-filter-input" placeholder="🔎 بحث بالرقم أو في الملاحظات...">
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all-hives" title="تحديد الكل"></th>
+                                    <th class="sortable" onclick="beehiveManager.getActive().sortTable(0)">الرقم</th>
+                                    <th class="sortable" onclick="beehiveManager.getActive().sortTable(1)">الإطارات</th>
+                                    <th class="sortable" onclick="beehiveManager.getActive().sortTable(2)">صحة الخلية</th>
+                                    <th class="sortable" onclick="beehiveManager.getActive().sortTable(3)">حالة الملكة</th>
+                                    <th class="sortable" onclick="beehiveManager.getActive().sortTable(4)">المخزون</th> <th>آخر ملاحظة</th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hives-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="stars-tab" class="tab-content">
+                    <h2><i class="fas fa-star"></i> النجوم الفلكية والمواسم النحلية</h2>
+                    <div id="star-calculator-content">
+                        </div>
+                </div>
+
+                <div id="analysis-tab" class="tab-content">
+                    <h2><i class="fas fa-chart-line"></i> التحليلات المتقدمة (لخلية واحدة)</h2>
+                    <div class="analysis-grid">
+                        <div class="chart-section">
+                            <div style="margin-bottom: 15px;">
+                                <label for="hive-analysis-selector" style="font-weight: bold;">اختر خلية لعرض سجلها التاريخي:</label>
+                                <select id="hive-analysis-selector" onchange="updateAnalysisCharts()"></select>
+                            </div>
+                            <div class="main-tabs" style="border-bottom: none;">
+                                <button class="tab-button active" onclick="showChart('frames-trend', this)">قوة الخلية</button>
+                                <button class="tab-button" onclick="showChart('health-trend', this)">درجة الصحة</button>
+                                <button class="tab-button" onclick="showChart('queen-age', this)">عمر الملكة vs الإطارات</button>
+                            </div>
+                            <div id="frames-trend-chart" class="chart-wrapper active-chart"><canvas id="framesTrendCanvas"></canvas></div>
+                            <div id="health-trend-chart" class="chart-wrapper"><canvas id="healthTrendCanvas"></canvas></div>
+                            <div id="queen-age-chart" class="chart-wrapper"><canvas id="queenAgeCanvas"></canvas></div>
+                        </div>
+                        <div class="recommendations-section">
+                            <h3><i class="fas fa-lightbulb"></i> التوصيات الإدارية (لخلية محددة)</h3>
+                            <div id="recommendations-list"><p style="text-align: center; color: var(--text-color);">جاري تحليل البيانات...</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settings-tab" class="tab-content">
+                    <h2><i class="fas fa-cog"></i> إعدادات التطبيق</h2>
+                    <div class="settings-card">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label for="theme-checkbox"><i class="fas fa-moon"></i> الوضع الليلي</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="theme-checkbox" onchange="toggleTheme()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                         <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label for="stars-feature-checkbox"><i class="fas fa-star"></i> النجوم الفلكية</label>
+                             <label class="toggle-switch">
+                                <input type="checkbox" id="stars-feature-checkbox" onchange="toggleStarsFeature()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                     <div class="settings-card">
+                         <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label for="recs-feature-checkbox"><i class="fas fa-lightbulb"></i> التوصيات الإدارية الآلية</label>
+                             <label class="toggle-switch">
+                                <input type="checkbox" id="recs-feature-checkbox" onchange="toggleRecsFeature()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h3><i class="fas fa-cloud"></i> المزامنة السحابية</h3>
+                        <div id="current-sync-status" class="auth-status signed-out" style="margin-bottom: 10px;">
+                            <p>الحالة: غير مسجل</p>
+                        </div>
+                        <button onclick="showFirebaseAuthModal()" style="background-color: var(--info-color);">
+                            <i class="fas fa-cloud-upload-alt"></i> إدارة المزامنة السحابية
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="global-stats-view" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><i class="fas fa-chart-line"></i> عرض الرسوم البيانية المتطورة</h2>
+                    <button onclick="goBackToDashboard()"><i class="fas fa-arrow-left"></i> العودة للوحة التحكم</button>
+                </div>
+                <div class="analysis-grid">
+                    <div class="chart-container"><h3>توزيع قوة الخلايا (الحالي)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalStrengthCanvas"></canvas></div></div>
+                    <div class="chart-container"><h3>توزيع أعمار الملكات</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalQueenAgeCanvas"></canvas></div></div>
+                </div>
+                <div class="analysis-grid" style="margin-top: 20px;">
+                    <div class="chart-container" style="grid-column: 1 / -1;"><h3>متوسط قوة المنحل شهرياً</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalWeeklyAvgCanvas"></canvas></div></div>
+                </div>
+            </div>
+            
+            <div id="site-comparison-view" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><i class="fas fa-balance-scale"></i> مقارنة استراتيجية بين المواقع</h2>
+                    <button onclick="goBackToDashboard()"><i class="fas fa-arrow-left"></i> العودة للوحة التحكم</button>
+                </div>
+                <div class="analysis-grid">
+                    <div class="chart-container"><h3>مقارنة متوسط قوة الخلايا (بالإطارات)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteAvgStrengthCanvas"></canvas></div></div>
+                    <div class="chart-container"><h3>توزيع قوة الخلايا بين المواقع (%)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteStrengthDistCanvas"></canvas></div></div>
+                </div>
+                 <div class="analysis-grid" style="margin-top: 20px;">
+                    <div class="chart-container" style="grid-column: 1 / -1;"><h3>مقارنة متوسط مخزون العسل (بالإطارات)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteAvgHoneyCanvas"></canvas></div></div>
+                </div>
+            </div>
+
+        </div>
+        <footer class="app-footer">
+            <p>حقوق الطبع والنشر &copy; 2025 إدارة المناحل الاحترافية. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+</div>
+
+<div class="modal-overlay" id="custom-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-title"></h3>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modal-message"></p>
+            <div id="modal-custom-content"></div>
+        </div>
+        <div class="modal-buttons">
+            <button id="modal-cancel-btn" style="background-color: #7f8c8d;">إلغاء</button>
+            <button id="modal-confirm-btn" style="background-color: var(--danger-color);">تأكيد</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="honeycom-modal">
+    <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-bacon"></i> خلية التواصل (Honeycom)</h3>
+            <button class="modal-close-btn" onclick="closeHoneycom()">&times;</button>
+        </div>
+        <div class="modal-body" id="honeycom-body">
+            <p style="text-align: center;">اضغط على إحدى العيون السداسية الفارغة لترك رسالتك للمطور.</p>
+            <div class="honeycomb-grid">
+                </div>
+            <div id="honeycom-form" class="feature-hidden" style="margin-top: 15px;">
+                <select id="honeycom-type" style="margin-bottom: 10px;">
+                    <option value="suggestion">💡 اقتراح ميزة جديدة</option>
+                    <option value="bug_report">🐞 إبلاغ عن مشكلة فنية</option>
+                    <option value="question">❓ استفسار عام</option>
+                    <option value="thanks">❤️ شكر وتقدير</option>
+                </select>
+                <textarea id="honeycom-message" rows="4" placeholder="اكتب رسالتك هنا..."></textarea>
+                 <div style="display: flex; align-items: center; margin-top: 10px; font-size: 0.9em;">
+                    <input type="checkbox" id="honeycom-publish-ok" style="width: auto; margin-left: 8px;">
+                    <label for="honeycom-publish-ok">أوافق على نشر هذا الاقتراح بشكل مجهول.</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button onclick="closeHoneycom()" style="background-color: #7f8c8d;">إغلاق</button>
+            <button onclick="sendHoneycomMessage()" id="honeycom-send-btn" class="feature-hidden" style="background-color: var(--header-color);"><i class="fas fa-paper-plane"></i> إرسال</button>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container"></div>
+
+<script>
+(function () {
+    // ==========================================
+    // إعداد Firebase (استبدل بالقيم الخاصة بك)
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAcr5pFbTdOaJtBsGJP4fBVlUHu0JW1iVQ",
+        authDomain: "beehivepro-450.firebaseapp.com",
+        projectId: "beehivepro-450",
+        storageBucket: "beehivepro-450.firebasestorage.app",
+        messagingSenderId: "187215961506",
+        appId: "1:187215961506:web:4051c7d86a5ce9115766fb",
+measurementId: "G-3DEXZHD6HD"
+    };
+
+    // تهيئة Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // --- إضافة: تفعيل الكاش لقاعدة البيانات (للعمل بدون إنترنت) ---
+    db.enablePersistence()
+      .catch((err) => {
+          if (err.code == 'failed-precondition') {
+              console.log('Persistence failed: Multiple tabs open');
+          } else if (err.code == 'unimplemented') {
+              console.log('Persistence is not available in this browser');
+          }
+      });
+
+    // ==========================================
+    // DBHelper: وحدة التعامل مع قاعدة البيانات المحلية
+    // ==========================================
+    const DBHelper = (function () {
+        const DB_NAME = 'BeehiveDB';
+        const DB_VERSION = 1;
+        let dbInstance;
+        const STORES = ['settings', 'sites', 'tasks', 'hives'];
+
+        function promisifyRequest(request) {
+            return new Promise((resolve, reject) => {
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function init() {
+            if (dbInstance) return Promise.resolve(dbInstance);
+            console.log(`فتح قاعدة البيانات '${DB_NAME}' بالإصدار ${DB_VERSION}...`);
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                const oldVersion = event.oldVersion;
+                console.log(`ترقية قاعدة البيانات من الإصدار ${oldVersion} إلى ${DB_VERSION}`);
+                switch (oldVersion) {
+                    case 0:
+                        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+                        if (!db.objectStoreNames.contains('sites')) db.createObjectStore('sites', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('tasks')) {
+                            const tasksStore = db.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });
+                            tasksStore.createIndex('siteId', 'siteId', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('hives')) {
+                            const hivesStore = db.createObjectStore('hives', { keyPath: 'recordId', autoIncrement: true });
+                            hivesStore.createIndex('siteId', 'siteId', { unique: false });
+                            hivesStore.createIndex('hiveId', 'hiveId', { unique: false });
+                            hivesStore.createIndex('siteAndHive', ['siteId', 'hiveId'], { unique: false });
+                        }
+                        console.log("تم إنشاء البنية الأولية لقاعدة البيانات بنجاح.");
+                }
+            };
+            dbInstance = await promisifyRequest(request);
+            console.log("تم الاتصال بقاعدة البيانات بنجاح.");
+            return dbInstance;
+        }
+
+        function getTransactionStore(storeName, mode = 'readonly') {
+            const transaction = dbInstance.transaction(storeName, mode);
+            return transaction.objectStore(storeName);
+        }
+
+        return {
+            init: init,
+            STORES: STORES,
+            get: (storeName, key) => promisifyRequest(getTransactionStore(storeName).get(key)),
+            getAll: (storeName, indexName, query) => {
+                const store = getTransactionStore(storeName);
+                const source = indexName ? store.index(indexName) : store;
+                return promisifyRequest(source.getAll(query));
+            },
+            put: (storeName, value) => promisifyRequest(getTransactionStore(storeName, 'readwrite').put(value)),
+            add: (storeName, value) => promisifyRequest(getTransactionStore(storeName, 'readwrite').add(value)),
+            delete: (storeName, key) => promisifyRequest(getTransactionStore(storeName, 'readwrite').delete(key)),
+            clear: (storeName) => promisifyRequest(getTransactionStore(storeName, 'readwrite').clear()),
+            deleteByIndex: (storeName, indexName, query) => {
+                return new Promise((resolve, reject) => {
+                    const cursorRequest = getTransactionStore(storeName, 'readwrite').index(indexName).openCursor(query);
+                    cursorRequest.onsuccess = (event) => {
+                        const cursor = event.target.result;
+                        if (cursor) {
+                            cursor.delete();
+                            cursor.continue();
+                        } else {
+                            resolve();
+                        }
+                    };
+                    cursorRequest.onerror = () => reject(cursorRequest.error);
+                });
+            }
+        };
+    })();
+
+    // ==========================================
+// ==========================================
+// Firebase Helper: إدارة المزامنة السحابية (محدث ومصحح)
+// ==========================================
+const FirebaseHelper = {
+    isSyncing: false,
+    syncInProgress: false,
+    currentUser: null,
+    
+    async init() {
+        auth.onAuthStateChanged(async (user) => {
+            this.currentUser = user;
+            await this.updateAuthUI(user);
+            if (user) {
+                hideFirebaseAuthModal();
+                // عند تسجيل الدخول فقط نقوم بالمزامنة الشاملة للتأكد من تطابق البيانات
+                await this.handleLoginSyncStrategy(user);
+            }
+        });
+    },
+
+    // دالة جديدة: رفع عنصر واحد فقط للسحابة (إضافة أو تعديل)
+    async saveItem(collectionName, docId, data) {
+        if (!this.currentUser) return;
+        try {
+            const userId = this.currentUser.uid;
+            // إضافة طابع زمني ورقم المستخدم
+            const dataToUpload = { ...data, lastUpdated: firebase.firestore.FieldValue.serverTimestamp(), userId: userId };
+            
+            // التأكد من أن المعرف نصي
+            const safeDocId = String(docId);
+            
+            await db.collection("users").doc(userId).collection(collectionName).doc(safeDocId).set(dataToUpload, { merge: true });
+            console.log(`Saved to cloud: ${collectionName}/${safeDocId}`);
+        } catch (error) {
+            console.error("Cloud Save Error:", error);
+            showNotification("فشل الحفظ في السحابة، سيتم المحاولة لاحقاً", "warning");
+        }
+    },
+
+    // دالة جديدة: حذف عنصر واحد من السحابة
+    async deleteItem(collectionName, docId) {
+        if (!this.currentUser) return;
+        try {
+            const userId = this.currentUser.uid;
+            await db.collection("users").doc(userId).collection(collectionName).doc(String(docId)).delete();
+            console.log(`Deleted from cloud: ${collectionName}/${docId}`);
+        } catch (error) {
+            console.error("Cloud Delete Error:", error);
+        }
+    },
+
+    async handleLoginSyncStrategy(user) {
+        const userId = user.uid;
+        const syncIndicator = getElement("sync-status-indicator");
+        syncIndicator.style.display = "block";
+        syncIndicator.className = "auth-status signed-in";
+        syncIndicator.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري التحقق من بيانات السحابة...`;
+
+        try {
+            const cloudSitesSnapshot = await db.collection("users").doc(userId).collection("sites").limit(1).get();
+
+            if (!cloudSitesSnapshot.empty) {
+                console.log("Found cloud data. Downloading...");
+                showNotification("جاري جلب بياناتك من السحابة...", "info");
+
+                // مسح البيانات المحلية لتجنب التكرار عند الاستيراد من السحابة
+                await DBHelper.clear("sites");
+                await DBHelper.clear("hives");
+                await DBHelper.clear("tasks");
+                await DBHelper.clear("settings");
+                
+                managers.clear();
+                sites = [];
+                activeSiteId = null;
+
+                // تفعيل الاستماع للتغييرات (وهو ما سيجلب البيانات فعلياً)
+                this.setupRealTimeSync();
+                
+                syncIndicator.innerHTML = `<i class="fas fa-check-circle"></i> تمت المزامنة`;
+            } else {
+                console.log("New user or empty cloud. Uploading local data...");
+                await this.syncLocalToCloud(); // رفع أولي شامل فقط
+                this.setupRealTimeSync();
+            }
+            
+            setTimeout(() => {
+                syncIndicator.innerHTML = `<i class="fas fa-cloud"></i> متصل: ${user.email}`;
+            }, 2000);
+
+        } catch (error) {
+            console.error("Login Sync Error:", error);
+            syncIndicator.innerHTML = `<i class="fas fa-exclamation-triangle"></i> خطأ في الاتصال`;
+        }
+    },
+    
+    async updateAuthUI(user) {
+        const statusElement = getElement("current-sync-status");
+        const syncIndicator = getElement("sync-status-indicator");
+        
+        if (user) {
+            statusElement.innerHTML = `<p>مسجل الدخول: ${user.email}</p>`;
+            statusElement.className = "auth-status signed-in";
+            
+            if(!document.getElementById('logout-btn-settings')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logout-btn-settings';
+                logoutBtn.style.backgroundColor = 'var(--danger-color)';
+                logoutBtn.style.marginTop = '10px';
+                logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل الخروج';
+                logoutBtn.onclick = confirmSignOut;
+                statusElement.appendChild(logoutBtn);
+            }
+            syncIndicator.style.display = "block";
+        } else {
+            statusElement.innerHTML = `<p>الحالة: غير مسجل</p>`;
+            statusElement.className = "auth-status signed-out";
+            syncIndicator.style.display = "none";
+        }
+    },
+    
+    // المزامنة الشاملة (تستخدم فقط عند تسجيل الدخول لأول مرة أو الدمج اليدوي)
+    async syncLocalToCloud() {
+        if (this.syncInProgress || !this.currentUser) return;
+        this.syncInProgress = true;
+        
+        try {
+            const userId = this.currentUser.uid;
+            
+            // رفع المواقع
+            const sites = await DBHelper.getAll("sites");
+            for (const site of sites) {
+                await this.saveItem("sites", site.id, site);
+            }
+            
+            // رفع الخلايا
+            const hives = await DBHelper.getAll("hives");
+            for (const hive of hives) {
+                // نستخدم recordId كمعرف للمستند
+                if (hive.recordId) await this.saveItem("hives", hive.recordId, hive);
+            }
+
+            // رفع المهام
+            const tasks = await DBHelper.getAll("tasks");
+            for (const task of tasks) {
+                if (task.id) await this.saveItem("tasks", task.id, task);
+            }
+
+            // رفع الإعدادات
+            const settings = await DBHelper.getAll("settings");
+            for (const setting of settings) {
+                await this.saveItem("settings", setting.key, setting);
+            }
+            
+        } catch (error) {
+            console.error("Full Sync Error:", error);
+        } finally {
+            this.syncInProgress = false;
+        }
+    },
+    
+    setupRealTimeSync() {
+        if (!this.currentUser) return;
+        const userId = this.currentUser.uid;
+        
+        // دالة مساعدة لتحديث البيانات المحلية دون إعادة الرفع للسحابة (لتجنب الحلقات المفرغة)
+        const updateLocal = async (store, data, keyField) => {
+            // هنا نقوم فقط بالتحديث المحلي، ولن نستدعي دوال الرفع
+            await DBHelper.put(store, data);
+        };
+
+        // الاستماع للمواقع
+        db.collection("users").doc(userId).collection("sites").onSnapshot(async (snapshot) => {
+            let needsRefresh = false;
+            if (snapshot.empty && sites.length === 0) return;
+
+            for (const change of snapshot.docChanges()) {
+                const siteData = change.doc.data();
+                if (change.type === "added" || change.type === "modified") {
+                    await DBHelper.put("sites", { id: siteData.id, name: siteData.name, sortState: siteData.sortState });
+                    if (!managers.has(siteData.id)) managers.set(siteData.id, new BeehiveManager(siteData.id));
+                    needsRefresh = true;
+                }
+                if (change.type === "removed") {
+                        await DBHelper.delete("sites", siteData.id);
+                        managers.delete(siteData.id);
+                        needsRefresh = true;
+                }
+            }
+            if (needsRefresh) {
+                sites = await DBHelper.getAll("sites");
+                await createSiteButtons();
+                if (sites.length > 0 && !sites.find(s => s.id === activeSiteId)) openSite(sites[0].id);
+                else if (sites.length > 0 && activeSiteId) beehiveManager.getActive().refreshUI();
+            }
+        });
+        
+        // الاستماع للخلايا
+        db.collection("users").doc(userId).collection("hives").onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                const hiveData = change.doc.data();
+                // تأكد من تحويل recordId لرقم إذا كان مخزناً كنص
+                if (hiveData.recordId) hiveData.recordId = parseInt(hiveData.recordId); 
+
+                if (change.type === "added" || change.type === "modified") {
+                    await DBHelper.put("hives", hiveData);
+                }
+                if (change.type === "removed") {
+                    // نستخدم hiveData.recordId للحذف
+                    // ملاحظة: الحذف من السحابة يعيد البيانات لكن قد نحتاج لتأكيد المعرف
+                    const docId = parseInt(change.doc.id); // المعرف في فايرستور هو recordId
+                    if(!isNaN(docId)) await DBHelper.delete("hives", docId);
+                }
+                
+                if (beehiveManager.getActive() && hiveData.siteId === activeSiteId) {
+                    beehiveManager.getActive().refreshUI();
+                }
+            });
+        });
+            
+        // الاستماع للمهام
+        db.collection("users").doc(userId).collection("tasks").onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                const taskData = change.doc.data();
+                if (taskData.id) taskData.id = parseInt(taskData.id);
+
+                if (change.type === "added" || change.type === "modified") await DBHelper.put("tasks", taskData);
+                if (change.type === "removed") {
+                     const docId = parseInt(change.doc.id);
+                     if(!isNaN(docId)) await DBHelper.delete("tasks", docId);
+                }
+                
+                if (beehiveManager.getActive()) beehiveManager.getActive().displayTasks();
+            });
+        });
+    },
+
+    // دوال المصادقة (بقيت كما هي)
+    async signInWithGoogle() {
+         try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await auth.signInWithPopup(provider);
+            showNotification("تم تسجيل الدخول بنجاح!", "success");
+        } catch (error) {
+            console.error("Google sign-in error:", error);
+            showNotification("فشل تسجيل الدخول: " + error.message, "error");
+        }
+    },
+    async signInWithEmail(email, password) {
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            showNotification("تم تسجيل الدخول بنجاح!", "success");
+        } catch (error) {
+            console.error("Email sign-in error:", error);
+            showNotification("فشل تسجيل الدخول: " + error.message, "error");
+        }
+     },
+    async signUpWithEmail(email, password) {
+         try {
+            await auth.createUserWithEmailAndPassword(email, password);
+            showNotification("تم إنشاء الحساب بنجاح!", "success");
+        } catch (error) {
+            console.error("Sign-up error:", error);
+            showNotification("فشل إنشاء الحساب: " + error.message, "error");
+        }
+    },
+    async signOut() {
+        try {
+            await auth.signOut();
+            showNotification("تم تسجيل الخروج", "info");
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            console.error("Sign-out error:", error);
+            showNotification("فشل تسجيل الخروج", "error");
+        }
+    }
+};
+
+    // ==========================================
+    // المتغيرات العامة والأدوات المساعدة
+    // ==========================================
+    const managers = new Map();
+    let sites = [];
+    let activeSiteId = null;
+    let analysisCharts = {};
+    let chartsInitialized = false;
+    let globalCharts = {};
+    let comparisonCharts = {};
+
+    const getElement = (id) => document.getElementById(id);
+// دالة لتبديل رؤية كلمة المرور
+window.togglePassword = function(inputId, icon) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+};
+
+    // دالة لتأخير التنفيذ (Debounce) لتحسين الأداء عند البحث وتغيير حجم النافذة
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    const beehiveManager = {
+        get: (id) => managers.get(id),
+        getActive: () => managers.get(activeSiteId)
+    };
+
+    // ==========================================
+    // إدارة البيانات (استيراد / تصدير)
+    // ==========================================
+    async function exportData() {
+        const data = {};
+        for (const store of DBHelper.STORES) {
+            data[store] = await DBHelper.getAll(store);
+        }
+        if (Object.values(data).every(arr => arr.length === 0)) {
+            showNotification("لا توجد بيانات لتصديرها.", "warning");
+        } else {
+            showExportModal(JSON.stringify(data, null, 2));
+        }
+    }
+
+    function showExportModal(jsonData) {
+        showModal({
+            title: "تصدير / نسخ احتياطي للبيانات",
+            message: "يمكنك مشاركة بياناتك مع تطبيق آخر لحفظها كملف، أو نسخها يدويًا ولصقها في مكان آمن.",
+            customHTML: `<textarea readonly style="width: 100%; height: 200px; margin-bottom: 15px; font-family: monospace; direction: ltr; background-color: var(--bg-color); color: var(--text-color);">${jsonData}</textarea>
+                         <div id="export-actions" style="display: flex; gap: 10px; justify-content: center;"></div>`,
+            showConfirm: false,
+            cancelText: "إغلاق"
+        });
+
+        const actionsDiv = getElement("export-actions");
+
+        if (navigator.share) {
+            const shareBtn = document.createElement("button");
+            shareBtn.innerHTML = '<i class="fas fa-share-alt"></i> مشاركة البيانات';
+            shareBtn.onclick = () => {
+                navigator.share({
+                    title: `نسخة احتياطية من بيانات المنحل - ${new Date().toLocaleDateString()}`,
+                    text: jsonData
+                }).then(() => showNotification("تمت المشاركة بنجاح!", "success"))
+                  .catch(err => console.log("خطأ في المشاركة:", err));
+            };
+            actionsDiv.appendChild(shareBtn);
+        }
+
+        const copyBtn = document.createElement("button");
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> نسخ إلى الحافظة';
+        copyBtn.style.backgroundColor = "var(--info-color)";
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(jsonData).then(() => {
+                showNotification("تم نسخ البيانات إلى الحافظة بنجاح!", "success");
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy"></i> نسخ إلى الحافظة'; }, 2000);
+            }).catch(err => showNotification("فشل النسخ!", "error"));
+        };
+        actionsDiv.appendChild(copyBtn);
+    }
+
+    function importData() {
+        showModal({
+            title: "دمج البيانات",
+            message: "سيتم دمج البيانات من الملف مع بياناتك الحالية. سيتم تحديث الإعدادات وإضافة سجلات جديدة. هذا الإجراء لا يمكن التراجع عنه.",
+            confirmText: "أفهم، متابعة",
+            onConfirm: () => {
+                hideModal();
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json,text/plain";
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        try {
+                            const importedData = JSON.parse(event.target.result);
+                            if (!DBHelper.STORES.every(store => Array.isArray(importedData[store]))) {
+                                throw new Error("تنسيق الملف غير صالح أو تالف.");
+                            }
+
+                            // معالجة تعارض المعرفات (IDs) للمواقع
+                            const existingSites = await DBHelper.getAll("sites");
+                            const siteMap = new Map(existingSites.map(s => [s.name.toLowerCase(), s.id]));
+                            const idMapping = {};
+
+                            if (importedData.sites) {
+                                for (const site of importedData.sites) {
+                                    const siteNameLower = site.name.toLowerCase();
+                                    if (siteMap.has(siteNameLower)) {
+                                        idMapping[site.id] = siteMap.get(siteNameLower);
+                                    } else {
+                                        const newId = "site_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+                                        const newSite = { ...site, id: newId };
+                                        await DBHelper.add("sites", newSite);
+                                        idMapping[site.id] = newId;
+                                    }
+                                }
+                            }
+
+                            const dataStores = ["hives", "tasks"];
+                            for (const store of dataStores) {
+                                if (importedData[store]) {
+                                    for (const item of importedData[store]) {
+                                        if (item.siteId && idMapping[item.siteId]) {
+                                            item.siteId = idMapping[item.siteId];
+                                        } else {
+                                            continue; // تخطي البيانات اليتيمة
+                                        }
+
+                                        // إزالة المعرفات القديمة لإنشاء معرفات جديدة تلقائياً
+                                        if (store === "hives" && item.recordId) delete item.recordId;
+                                        else if (store === "tasks" && item.id) delete item.id;
+
+                                        await DBHelper.add(store, item);
+                                    }
+                                }
+                            }
+
+                            if (importedData.settings) {
+                                for (const setting of importedData.settings) {
+                                    await DBHelper.put("settings", setting);
+                                }
+                            }
+
+                            showNotification("تم دمج البيانات بنجاح! سيتم إعادة تحميل التطبيق.", "success", 4000);
+                            setTimeout(() => window.location.reload(), 4000);
+                        } catch (err) {
+                            showNotification("فشل دمج البيانات: " + err.message, "error");
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+        });
+    }
+
+    // ==========================================
+    // واجهة المستخدم والإشعارات
+    // ==========================================
+    function showNotification(text, type = "info", duration = 3000) {
+        const container = getElement("notification-container");
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        
+        let icon = "fas fa-info-circle";
+        if (type === "success") icon = "fas fa-check-circle";
+        if (type === "warning") icon = "fas fa-exclamation-triangle";
+        if (type === "error") icon = "fas fa-times-circle";
+
+        notification.innerHTML = `<i class="${icon}"></i><span>${text}</span>`;
+        container.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = "0";
+            notification.style.transform = "translateX(-120%)";
+            setTimeout(() => notification.remove(), 500);
+        }, duration);
+    }
+
+    function showModal({ title, message, onConfirm, showConfirm = true, confirmText = "تأكيد", customHTML = "", cancelText = "إلغاء" }) {
+        getElement("modal-title").textContent = title;
+        getElement("modal-message").textContent = message;
+        getElement("modal-custom-content").innerHTML = customHTML;
+        
+        const modal = getElement("custom-modal");
+        modal.style.display = "flex";
+        
+        const confirmBtn = getElement("modal-confirm-btn");
+        const cancelBtn = getElement("modal-cancel-btn");
+        const closeBtn = modal.querySelector(".modal-close-btn");
+
+        // استبدال الزر لإزالة المستمعين السابقين
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.textContent = confirmText;
+        newConfirmBtn.style.display = showConfirm ? "flex" : "none";
+        newConfirmBtn.onclick = () => { onConfirm(); };
+
+        cancelBtn.textContent = cancelText;
+        cancelBtn.onclick = hideModal;
+        closeBtn.onclick = hideModal;
+    }
+
+    function hideModal() {
+        getElement("custom-modal").style.display = "none";
+    }
+
+    // ==========================================
+    // إدارة الثيمات والميزات الإضافية
+    // ==========================================
+    async function applyTheme(theme) {
+        document.body.classList.toggle("dark-mode", theme === "dark");
+        getElement("theme-checkbox").checked = (theme === "dark");
+        updateChartColors();
+
+        if (chartsInitialized) Object.values(analysisCharts).forEach(chart => chart.update());
+        if (Object.keys(globalCharts).length > 0) Object.values(globalCharts).forEach(chart => chart.update());
+        if (Object.keys(comparisonCharts).length > 0) Object.values(comparisonCharts).forEach(chart => chart.update());
+    }
+
+    async function toggleTheme() {
+        const theme = document.body.classList.contains("dark-mode") ? "light" : "dark";
+        await DBHelper.put("settings", { key: "theme", value: theme });
+        applyTheme(theme);
+        
+        // مزامنة الإعدادات مع السحابة إذا كان المستخدم مسجل الدخول
+        if (FirebaseHelper.currentUser) {
+            FirebaseHelper.syncLocalToCloud();
+        }
+    }
+
+    function applyStarsFeature(enabled) {
+        document.querySelectorAll(".star-feature").forEach(el => el.classList.toggle("feature-hidden", !enabled));
+        if (!enabled && getElement("stars-tab").classList.contains("active")) {
+            beehiveManager.getActive().showMainTab("dashboard-tab");
+        }
+    }
+
+    async function toggleStarsFeature() {
+        const enabled = getElement("stars-feature-checkbox").checked;
+        await DBHelper.put("settings", { key: "starsFeature", value: enabled });
+        applyStarsFeature(enabled);
+        
+        if (FirebaseHelper.currentUser) {
+            FirebaseHelper.syncLocalToCloud();
+        }
+    }
+
+    function applyRecsFeature(enabled) {
+        document.querySelectorAll(".recommendation-feature").forEach(el => el.classList.toggle("feature-hidden", !enabled));
+    }
+
+    async function toggleRecsFeature() {
+        const enabled = getElement("recs-feature-checkbox").checked;
+        await DBHelper.put("settings", { key: "recsFeature", value: enabled });
+        applyRecsFeature(enabled);
+        if (beehiveManager.getActive()) beehiveManager.getActive().refreshUI();
+        
+        if (FirebaseHelper.currentUser) {
+            FirebaseHelper.syncLocalToCloud();
+        }
+    }
+
+    // ==========================================
+    // وظائف الرسوم البيانية (Charts)
+    // ==========================================
+    function updateChartColors() {
+        const textColor = getComputedStyle(document.body).getPropertyValue('--text-color');
+        const headerColor = getComputedStyle(document.body).getPropertyValue('--header-color');
+        const successColor = getComputedStyle(document.body).getPropertyValue('--success-color');
+        const infoColor = getComputedStyle(document.body).getPropertyValue('--info-color');
+
+        const commonOptions = {
+            scales: {
+                x: { ticks: { color: textColor }, grid: { color: "rgba(128,128,128,0.1)" } },
+                y: { ticks: { color: textColor }, grid: { color: "rgba(128,128,128,0.1)" } }
+            },
+            plugins: { legend: { labels: { color: textColor } } }
+        };
+
+        // تحديث المخططات الفردية
+        if (analysisCharts.frames) {
+            analysisCharts.frames.options = { ...analysisCharts.frames.options, ...commonOptions, plugins: { ...commonOptions.plugins, title: { display: true, text: "تطور قوة الخلية (بالإطارات)", color: textColor } } };
+            analysisCharts.frames.data.datasets[0].borderColor = headerColor;
+        }
+        if (analysisCharts.health) {
+            analysisCharts.health.options = { ...analysisCharts.health.options, ...commonOptions, plugins: { ...commonOptions.plugins, title: { display: true, text: "تطور صحة الخلية", color: textColor } } };
+            analysisCharts.health.data.datasets[0].borderColor = successColor;
+        }
+        if (analysisCharts.queenAge) {
+            analysisCharts.queenAge.options = { ...analysisCharts.queenAge.options, ...commonOptions, plugins: { ...commonOptions.plugins, title: { display: true, text: "علاقة عمر الملكة بقوة الخلية", color: textColor } } };
+            analysisCharts.queenAge.data.datasets[0].backgroundColor = infoColor;
+        }
+
+        // تحديث المخططات العامة والمقارنة
+        if (globalCharts.strength) globalCharts.strength.options = { ...globalCharts.strength.options, ...commonOptions };
+        if (globalCharts.queenAge) globalCharts.queenAge.options = { ...globalCharts.queenAge.options, plugins: { legend: { labels: { color: textColor } } } };
+        if (globalCharts.weeklyAvg) {
+            globalCharts.weeklyAvg.options = { ...globalCharts.weeklyAvg.options, ...commonOptions };
+            globalCharts.weeklyAvg.data.datasets[0].borderColor = headerColor;
+        }
+        if (comparisonCharts.avgStrength) comparisonCharts.avgStrength.options = { ...comparisonCharts.avgStrength.options, ...commonOptions };
+        if (comparisonCharts.strengthDist) comparisonCharts.strengthDist.options = { ...comparisonCharts.strengthDist.options, ...commonOptions };
+        if (comparisonCharts.avgHoney) comparisonCharts.avgHoney.options = { ...comparisonCharts.avgHoney.options, ...commonOptions };
+    }
+
+    function showChart(chartId, btn) {
+        document.querySelectorAll(".chart-wrapper").forEach(el => el.classList.remove("active-chart"));
+        document.querySelectorAll(".chart-section .tab-button").forEach(el => el.classList.remove("active"));
+        getElement(`${chartId}-chart`).classList.add("active-chart");
+        btn.classList.add("active");
+    }
+
+    function initializeAnalysisCharts() {
+        if (chartsInitialized) {
+            updateChartColors();
+            return;
+        }
+        const commonOptions = { responsive: true, maintainAspectRatio: false };
+
+        analysisCharts.frames = new Chart(getElement("framesTrendCanvas"), {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'عدد الإطارات', data: [], tension: 0.1 }] },
+            options: commonOptions
+        });
+
+        analysisCharts.health = new Chart(getElement("healthTrendCanvas"), {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'درجة الصحة (%)', data: [], tension: 0.1 }] },
+            options: commonOptions
+        });
+
+        analysisCharts.queenAge = new Chart(getElement("queenAgeCanvas"), {
+            type: 'scatter',
+            data: { datasets: [{ label: 'عمر الملكة (سنوات)', data: [] }] },
+            options: commonOptions
+        });
+
+        chartsInitialized = true;
+        updateChartColors();
+    }
+
+    // ==========================================
+    // واجهة المستخدم (Tabs, Quick Actions)
+    // ==========================================
+    function showFormTab(tabId, btn) {
+        document.querySelectorAll(".form-tab-content").forEach(el => el.classList.remove("active"));
+        document.querySelectorAll(".form-tabs .form-tab-button").forEach(el => el.classList.remove("active"));
+        getElement(`${tabId}-form`).classList.add("active");
+        btn.classList.add("active");
+    }
+
+    function toggleQuickActionsMenu() {
+        const menu = getElement("quick-actions-menu");
+        menu.style.display = (menu.style.display === "block") ? "none" : "block";
+    }
+
+    function performQuickAction(framesChange, noteText, stockType, stockChange) {
+        const selectedHives = Array.from(document.querySelectorAll(".hive-select-checkbox:checked")).map(cb => parseInt(cb.dataset.hiveId));
+        const activeManager = beehiveManager.getActive();
+
+        if (selectedHives.length > 0) {
+            showModal({
+                title: "تطبيق إجراء جماعي",
+                message: `سيتم تطبيق هذا الإجراء على ${selectedHives.length} خلية محددة. هل أنت متأكد؟`,
+                onConfirm: async () => {
+                    await activeManager.applyBulkAction(selectedHives, framesChange, noteText, stockType, stockChange);
+                    showNotification(`تم تطبيق الإجراء على ${selectedHives.length} خلية.`, "success");
+                    activeManager.refreshUI();
+                    hideModal();
+                }
+            });
+        } else {
+            const notesEl = getElement("notes");
+            if (framesChange !== 0) changeValue("frames", framesChange);
+            
+            if (stockChange !== 0) {
+                if (stockType === 'honey') changeValue("honey-frames", stockChange);
+                if (stockType === 'pollen') changeValue("pollen-frames", stockChange);
+            }
+
+            notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
+        }
+        toggleQuickActionsMenu();
+    }
+    async function addReviewTask(action, taskFramesChange) {
+        const hiveId = getElement("hive-id").value;
+        if (!hiveId) {
+            return showNotification("الرجاء إدخال رقم الخلية أولاً.", "error");
+        }
+        const hiveNum = parseInt(hiveId);
+        const activeManager = beehiveManager.getActive();
+        const taskText = `📍 مراجعة الخلية رقم ${hiveNum}: تحتاج ${action}`;
+        
+        // البيانات المطلوب حفظها
+        const taskData = { 
+            siteId: activeManager.siteId, 
+            text: taskText,
+            createdAt: new Date().toISOString() // إضافة توقيت لضمان التزامن المرتب
+        };
+
+        try {
+            // 1. الحفظ في قاعدة البيانات المحلية والحصول على معرف (ID)
+            const id = await DBHelper.add("tasks", taskData);
+            taskData.id = id; // ضروري جداً لـ Firebase
+
+            // 2. التزامن مع Firebase (هذا هو الجزء الذي كان ناقصاً في كودك)
+            if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                await FirebaseHelper.saveItem("tasks", id, taskData);
+            }
+
+            // 3. تحديث العرض في التطبيق
+            activeManager.displayTasks();
+            
+            showNotification(`تم تسجيل المهمة: الخلية رقم ${hiveNum} تحتاج ${action}.`, "info");
+
+            // تحديث حقل الملاحظات تلقائياً
+            const notesEl = getElement("notes");
+            const additionalNote = `[تم تعليمها للمراجعة: ${action}]`;
+            notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${additionalNote}` : additionalNote;
+            
+            // إذا كان الإجراء يتطلب تغيير عدد الإطارات (مثل شمع الأساس)
+            if (taskFramesChange !== 0) {
+                changeValue("frames", taskFramesChange);
+            }
+
+            // إغلاق قائمة الإجراءات السريعة
+            toggleQuickActionsMenu();
+            
+        } catch (error) {
+            console.error("خطأ في مزامنة المهمة السريعة:", error);
+            showNotification("تم الحفظ محلياً فقط، فشل التزامن مع السحابة", "warning");
+        }
+    }
+
+    // ==========================================
+    // منطق التحليلات (Analysis Logic)
+    // ==========================================
+    async function populateHiveSelector() {
+        const selector = getElement("hive-analysis-selector");
+        selector.innerHTML = '<option value="">-- اختر خلية --</option>';
+        const hiveIds = await beehiveManager.getActive().getUniqueHiveIds();
+        hiveIds.forEach(id => {
+            selector.innerHTML += `<option value="${id}">خلية رقم ${id}</option>`;
+        });
+    }
+
+    async function updateAnalysisCharts() {
+        const selectedHiveId = getElement("hive-analysis-selector").value;
+        const manager = beehiveManager.getActive();
+
+        if (!selectedHiveId || !chartsInitialized) {
+            Object.values(analysisCharts).forEach(chart => {
+                chart.data.labels = [];
+                chart.data.datasets.forEach(d => d.data = []);
+                chart.update();
+            });
+            getElement("recommendations-list").innerHTML = '<p style="text-align: center; color: var(--text-color);">اختر خلية من القائمة لبدء التحليل.</p>';
+            return;
+        }
+
+        const history = await manager.loadHistoryForHive(selectedHiveId);
+        const dates = history.map(r => (new Date(r.date)).toLocaleDateString("ar-EG"));
+        const frames = history.map(r => r.frames);
+        const health = history.map(r => manager.calculateHealthScore(r));
+
+        // تقليل كثافة التواريخ إذا كانت كثيرة
+        let displayDates = dates;
+        if (window.innerWidth < 768 && dates.length > 6) {
+            displayDates = dates.filter((_, i) => i % Math.ceil(dates.length / 6) === 0);
+        }
+
+        analysisCharts.frames.data.labels = displayDates;
+        analysisCharts.frames.data.datasets[0].data = frames;
+        analysisCharts.frames.update();
+
+        analysisCharts.health.data.labels = displayDates;
+        analysisCharts.health.data.datasets[0].data = health;
+        analysisCharts.health.update();
+
+        const queenAgeData = history.map(r => {
+            if (r.queenYear) {
+                return {
+                    x: (new Date(r.date)).getFullYear() - parseInt(r.queenYear),
+                    y: r.frames
+                };
+            }
+        }).filter(Boolean);
+        
+        analysisCharts.queenAge.data.datasets[0].data = queenAgeData;
+        analysisCharts.queenAge.options.scales.x.title = { display: true, text: "عمر الملكة (سنوات)" };
+        analysisCharts.queenAge.options.scales.y.title = { display: true, text: "عدد الإطارات" };
+        analysisCharts.queenAge.update();
+
+        generateHiveRecommendations(manager, history);
+    }
+
+    // ==========================================
+    // المواسم والنجوم (Star Seasons)
+    // ==========================================
+    const starSeasons = [
+        { star: "الشبط", start: "01-28", end: "02-20", name: "التشتية (البرد القارس)", desc: "يتوقف النشاط، وتنكمش الحضنة، ويجب التأكد من وجود المخزون الكافي.", tips: ["عدم فتح الخلايا أبداً إلا للحالات الطارئة جداً.", "التأكد من أن مدخل الخلية ضيق جداً لحفظ الدفء.", "عزل الخلايا خارجياً وتفقد المخزون من الخارج (وزن الخلية) للتأكد من كفايته."] },
+        { star: "العقارب", start: "02-21", end: "06-04", name: "بدء التوسعة الربيعية", desc: "يبدأ النحل بالتوسع، تنطلق الأزهار البرية، ويكون الشغل الشاغل هو تجديد الشمع وتقوية الخلايا.", tips: ["البدء بإضافة إطارات شمع أساس لتجديد الشمع فور بدء التوسع.", "مراقبة النحل لتفادي التطريد بزيادة الإطارات أو التقسيم.", "توفير مصدر ماء نقي قريب من المنحل."] },
+        { star: "الثريا", start: "06-05", end: "08-23", name: "الصيف والفيض الرئيسي", desc: "أشد فترة ارتفاع درجات حرارة، وبعضها يطلق عليه فترة سكون، ويجب العناية بالتهوية والماء.", tips: ["زيادة تهوية الخلايا ورفع الغطاء الخارجي قليلاً لتخفيف الحرارة.", "توفير مياه باردة ونظيفة باستمرار بالقرب من المنحل.", "الاستعداد لقطف العسل (الفيض الرئيسي) ومراقبة مؤشرات النضج."] },
+        { star: "سهيل", start: "08-24", end: "10-15", name: "تجهيز الشتاء", desc: "يبدأ نشاط النحل بالازدياد وبناء الأقراص، مع بدء خروج جيل الشتاء.", tips: ["البدء ببرنامج تغذية سكرية لتوسيع الحضنة وإعداد النحل الشتوي.", "مراجعة سجلات الخلايا الضعيفة والتخطيط لضمها أو تقويتها.", "التأكد من سلامة الخلية وإحكام إغلاقها ضد الحشرات."] },
+        { star: "الوسم", start: "10-16", end: "01-27", name: "التوسع الخريفي", desc: "أهم نجم لدخول الخريف، يكثر فيه النحل مع بدء التغذية وتغيير الملكات، وهو أهم فترة لمكافحة الفاروا.", tips: ["مكافحة الفاروا مكثفة لإنتاج جيل شتوي سليم.", "استبدال الملكات القديمة بملكات شابة لزيادة قوة الطوائف.", "توفير التغذية البروتينية (العجائن) لتشجيع الملكة على وضع البيض."] }
+    ];
+
+    function getCurrentStarSeason() {
+        const now = new Date();
+        const dateCode = (now.getMonth() + 1) * 100 + now.getDate();
+        return starSeasons.find(season => {
+            const startCode = (s => Number(s.split('-')[0]) * 100 + Number(s.split('-')[1]))(season.start);
+            const endCode = (s => Number(s.split('-')[0]) * 100 + Number(s.split('-')[1]))(season.end);
+            if (startCode > endCode) { // يمتد عبر السنة الجديدة
+                return dateCode >= startCode || dateCode <= endCode;
+            }
+            return dateCode >= startCode && dateCode <= endCode;
+        });
+    }
+
+    function updateStarCalculator() {
+        const contentDiv = getElement("star-calculator-content");
+        const currentSeason = getCurrentStarSeason();
+        let html = "";
+
+        if (currentSeason) {
+            html += `<div class="star-season-card">
+                        <h3><i class="fas fa-satellite-dish"></i> الموسم الحالي: ${currentSeason.name} (نجم ${currentSeason.star})</h3>
+                        <p class="date-range">من ${currentSeason.start.split('-').reverse().join('/')} إلى ${currentSeason.end.split('-').reverse().join('/')}</p>
+                        <p>${currentSeason.desc}</p>
+                        <h4><i class="fas fa-bee"></i> نصائح للنحال:</h4>
+                        <ul class="tips-list">${currentSeason.tips.map(t => `<li>${t}</li>`).join('')}</ul>
+                     </div>`;
+        } else {
+            html = '<p class="star-season-card">لا يوجد موسم فلكي محدد حالياً.</p>';
+        }
+
+        html += '<h3><i class="fas fa-forward"></i> المواسم القادمة</h3><div class="upcoming-seasons-grid">';
+        
+        let currentIndex = starSeasons.findIndex(s => s === currentSeason);
+        for (let i = 1; i <= 4; i++) {
+            const nextSeason = starSeasons[(currentIndex + i) % starSeasons.length];
+            html += `<div class="upcoming-card">
+                        <h4>${nextSeason.name} (نجم ${nextSeason.star})</h4>
+                        <p>يبدأ تقريباً في: ${nextSeason.start.split('-').reverse().join('/')}</p>
+                     </div>`;
+        }
+        html += "</div>";
+        contentDiv.innerHTML = html;
+    }
+
+    // ==========================================
+    // نظام التوصيات الآلي
+    // ==========================================
+    function generateHiveRecommendations(manager, history) {
+        const listDiv = getElement("recommendations-list");
+        listDiv.innerHTML = "";
+        if (history.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">لا توجد بيانات كافية للتحليل.</p>';
+
+        const recommendations = [];
+        let latest = history[history.length - 1];
+
+        if (history.length > 1) {
+            const season = getCurrentStarSeason();
+            const isSpring = season?.name === "بدء التوسعة الربيعية";
+            const queenAge = latest.queenYear ? (new Date().getFullYear() - parseInt(latest.queenYear)) : 0;
+
+            if (isSpring && latest.frames >= 7 && queenAge >= 1) {
+                const twoWeeksAgo = new Date(new Date().getTime() - 1296000000);
+                const oldRec = history.slice().reverse().find(r => new Date(r.date) <= twoWeeksAgo);
+                if (oldRec) {
+                    const growth = latest.frames - oldRec.frames;
+                    if (growth >= 3) {
+                        recommendations.push({ type: "danger", title: "🚨 توقع التطريد", text: `تنبيه: خطر تطريد مرتفع! الخلية قوية، الملكة ليست صغيرة، والنمو سريع (+${growth} إطارات في آخر أسبوعين). افحص بيوت الملكات فوراً.` });
+                    }
+                }
+            }
+        }
+
+        if (history.length >= 3) {
+            const last3 = history.slice(-3);
+            const s1 = manager.calculateHealthScore(last3[2]);
+            const s2 = manager.calculateHealthScore(last3[1]);
+            const s3 = manager.calculateHealthScore(last3[0]);
+
+            if (s1 < s2 && s2 < s3 && (latest.honeyFrames || 0) < 2) {
+                recommendations.push({ type: "danger", title: "📉 توقع ضعف وانهيار الخلية", text: "تنبيه: الخلية في تدهور مستمر وصحة الطائفة تتناقص مع نقص حاد في المخزون. تحتاج لدعم فوري بالتغذية وإطارات حضنة لتجنب انهيارها." });
+            }
+        }
+
+        const health = manager.calculateHealthScore(latest);
+        const { frames, honeyFrames = 0, pollenFrames = 0 } = latest;
+
+        if (honeyFrames > 5) recommendations.push({ type: "excess", title: "فائض كبير في العسل", text: `الخلية لديها ${honeyFrames} إطار عسل. يجب سحب الفائض فوراً للاستفادة منه وتوفير مساحة للملكة.` });
+        if (honeyFrames < 2) recommendations.push({ type: "deficit", title: "نقص في مخزون العسل", text: `الخلية لديها ${honeyFrames} إطار عسل فقط. يرجى التغذية فوراً لتجنب موت النحل جوعاً.` });
+        
+        if (pollenFrames > 3) recommendations.push({ type: "excess", title: "فائض في الكرس", text: `الخلية لديها ${pollenFrames} إطار كرس. يمكن استخدامه لدعم خلايا أخرى أضعف في المنحل.` });
+        if (pollenFrames < 1) recommendations.push({ type: "deficit", title: "نقص في مخزون الكرس", text: `الخلية لديها ${pollenFrames} إطار كرس فقط. يرجى توفير بدائل حبوب اللقاح لدعم الحضنة.` });
+
+        if (health < 60) recommendations.push({ type: "danger", title: "صحة الخلية ضعيفة", text: `درجة الصحة الحالية ${health}%. يرجى مراجعة سجل الملاحظات للبحث عن أمراض أو آفات.` });
+        if (frames < 4) recommendations.push({ type: "warning", title: "الخلية ضعيفة جداً", text: `تحتوي على ${frames} إطارات. يوصى بتغذية مكثفة أو ضمها لخلية أخرى.` });
+        
+        if (latest.queenStatus === "بدون ملكة") recommendations.push({ type: "danger", title: "الخلية يتيمة!", text: "يجب إضافة ملكة جديدة أو بيت ملكي أو ضمها فوراً قبل أن تكذب." });
+        if (latest.queenStatus === "مكذبة") recommendations.push({ type: "danger", title: "توقف: الخلية مكذبة!", text: "يجب نفض النحل بعيداً وضم الخلية لخلية قوية لإنقاذ النحل المتبقي." });
+
+        const queenAgeYears = (new Date()).getFullYear() - (latest.queenYear ? parseInt(latest.queenYear) : (new Date()).getFullYear());
+        if (queenAgeYears >= 2) recommendations.push({ type: "info", title: "الاستعداد لتغيير الملكة", text: `عمر الملكة ${queenAgeYears} سنوات. يفضل تغييرها في الموسم القادم لزيادة النشاط.` });
+        
+        if (frames >= 8 && health > 80) recommendations.push({ type: "success", title: "الخلية قوية ومزدهرة", text: "هذه الخلية ممتازة. يمكن التفكير في تقسيمها أو إضافة عاسلة لجمع العسل." });
+
+        if (recommendations.length === 0) recommendations.push({ type: "success", title: "الخلية بحالة جيدة ومستقرة", text: "لا توجد ملاحظات أو إجراءات عاجلة مطلوبة." });
+
+        recommendations.forEach(rec => {
+            listDiv.innerHTML += `<div class="recommendation-card ${rec.type}"><h4>${rec.title}</h4><p>${rec.text}</p></div>`;
+        });
+    }
+
+    async function generateSiteRecommendations(manager) {
+        const listDiv = getElement("site-recommendations-list");
+        listDiv.innerHTML = "";
+        const hives = await manager.loadHives();
+        if (hives.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">لا توجد خلايا في هذا الموقع لتقديم توصيات عامة.</p>';
+
+        const recommendations = [];
+        const count = hives.length;
+        
+        const weakCount = hives.filter(h => h.frames < 4).length;
+        if (weakCount / count > 0.3) recommendations.push({ type: "warning", title: "ضعف عام في المنحل", text: `يوجد ${weakCount} خلية ضعيفة (${Math.round(weakCount / count * 100)}%). يوصى ببدء برنامج تغذية عام ودعم الخلايا الضعيفة بإطارات حضنة من القوية.` });
+
+        const queenlessCount = hives.filter(h => h.queenStatus !== "ملكة").length;
+        if (queenlessCount / count > 0.2) recommendations.push({ type: "danger", title: "مشاكل في التطريد أو فقدان الملكات", text: `يوجد ${queenlessCount} خلية بدون ملكة أو مكذبة. يجب التدخل السريع بإضافة ملكات أو ضم الخلايا.` });
+
+        const oldQueenCount = hives.filter(h => h.queenYear && (new Date().getFullYear() - parseInt(h.queenYear) >= 2)).length;
+        if (oldQueenCount / count > 0.4) recommendations.push({ type: "info", title: "كثرة الملكات كبيرة السن", text: `${Math.round(oldQueenCount / count * 100)}% من ملكات المنحل عمرها سنتان أو أكثر. يفضل التخطيط لحملة تغيير ملكات لزيادة الإنتاجية.` });
+
+        const totalHoney = hives.reduce((sum, h) => sum + (h.honeyFrames || 0), 0);
+        const avgHoney = count > 0 ? totalHoney / count : 0;
+        if (avgHoney < 1.5) recommendations.push({ type: "deficit", title: "نقص عام في مخزون العسل", text: `متوسط مخزون العسل في الخلايا منخفض (${avgHoney.toFixed(1)} إطار). يجب المراقبة والتفكير في تغذية تكميلية إذا استمر النقص.` });
+
+        if (recommendations.length === 0) recommendations.push({ type: "success", title: "المنحل في حالة جيدة ومستقرة", text: "لا توجد مشاكل عامة تتطلب تدخلاً عاجلاً. استمر في المراقبة الدورية." });
+
+        recommendations.forEach(rec => {
+            listDiv.innerHTML += `<div class="recommendation-card ${rec.type}"><h4>${rec.title}</h4><p>${rec.text}</p></div>`;
+        });
+    }
+
+    // ==========================================
+    // الصنف الرئيسي: BeehiveManager (محدث للمزامنة الفورية)
+    // ==========================================
+    function BeehiveManager(siteId) {
+        this.siteId = siteId;
+        this.sortState = { column: 2, direction: "desc" };
+
+        this.loadHives = async () => {
+            const allRecords = await DBHelper.getAll("hives", "siteId", this.siteId);
+            const latestMap = new Map();
+            allRecords.forEach(record => {
+                if (!latestMap.has(record.hiveId) || new Date(record.date) > new Date(latestMap.get(record.hiveId).date)) {
+                    latestMap.set(record.hiveId, record);
+                }
+            });
+            return Array.from(latestMap.values());
+        };
+
+        this.loadHistory = () => DBHelper.getAll("hives", "siteId", this.siteId);
+        
+        this.loadHistoryForHive = async (hiveId) => {
+            const records = await DBHelper.getAll("hives", "siteAndHive", IDBKeyRange.only([this.siteId, parseInt(hiveId)]));
+            return records.sort((a, b) => new Date(a.date) - new Date(b.date));
+        };
+
+        this.getUniqueHiveIds = async () => {
+            const hives = await this.loadHives();
+            const ids = new Set(hives.map(h => h.hiveId));
+            return Array.from(ids).sort((a, b) => a - b);
+        };
+
+        this.loadTasks = () => DBHelper.getAll("tasks", "siteId", this.siteId);
+
+        // --- تعديل: دالة الحفظ مع الرفع المباشر ---
+        this.saveHive = async () => {
+            const id = parseInt(getElement("hive-id").value);
+            const frames = parseInt(getElement("frames").value);
+            if (isNaN(id) || isNaN(frames) || frames < 1 || id < 1) return showNotification("الرقم وعدد الإطارات مطلوبان.", "error");
+
+            const record = {
+                hiveId: id,
+                siteId: this.siteId,
+                date: new Date().toISOString(),
+                frames: frames,
+                queenStatus: getElement("queen-status").value,
+                queenYear: getElement("queen-year").value.trim(),
+                queenMarked: getElement("queen-marked").value,
+                notes: getElement("notes").value.trim(),
+                honeyFrames: parseInt(getElement("honey-frames").value) || 0,
+                pollenFrames: parseInt(getElement("pollen-frames").value) || 0
+            };
+
+            // 1. الحفظ محلياً والحصول على المعرف
+            const newRecordId = await DBHelper.add("hives", record);
+            record.recordId = newRecordId;
+            
+            // 2. الرفع المباشر للسحابة
+            if (FirebaseHelper.currentUser) {
+                await FirebaseHelper.saveItem("hives", newRecordId, record);
+            }
+            
+            this.refreshUI();
+            this.clearInputs();
+            showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
+        };
+
+        // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر ---
+        this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
+            const allHives = await this.loadHives();
+            const targets = allHives.filter(h => hiveIds.includes(h.hiveId));
+
+            for (const hive of targets) {
+                const newRecord = { ...hive };
+                delete newRecord.recordId; // حذف المعرف القديم
+                newRecord.date = new Date().toISOString();
+                
+                if (framesChange !== 0) newRecord.frames = Math.max(1, newRecord.frames + framesChange);
+                
+                if (stockChange !== 0) {
+                    if (stockType === 'honey') newRecord.honeyFrames = Math.max(0, (newRecord.honeyFrames || 0) + stockChange);
+                    else if (stockType === 'pollen') newRecord.pollenFrames = Math.max(0, (newRecord.pollenFrames || 0) + stockChange);
+                }
+
+                newRecord.notes = noteText;
+                
+                // حفظ محلي + رفع سحابي
+                const newId = await DBHelper.add("hives", newRecord);
+                newRecord.recordId = newId;
+
+                if (FirebaseHelper.currentUser) {
+                    await FirebaseHelper.saveItem("hives", newId, newRecord);
+                }
+            }
+            
+            this.refreshUI();
+        };
+
+        // --- تعديل: دالة الحذف مع الحذف المباشر من السحابة ---
+        this.deleteHive = (id) => {
+            showModal({
+                title: "تأكيد الحذف",
+                message: `هل أنت متأكد من حذف الخلية رقم ${id} وجميع سجلاتها؟`,
+                onConfirm: async () => {
+                    // جلب السجلات للحذف السحابي
+                    const hivesToDelete = await DBHelper.getAll("hives", "siteAndHive", IDBKeyRange.only([this.siteId, id]));
+
+                    // الحذف المحلي
+                    await DBHelper.deleteByIndex("hives", "siteAndHive", IDBKeyRange.only([this.siteId, id]));
+                    
+                    // الحذف السحابي لكل سجل
+                    if (FirebaseHelper.currentUser) {
+                        for (const h of hivesToDelete) {
+                            if (h.recordId) await FirebaseHelper.deleteItem("hives", h.recordId);
+                        }
+                    }
+                    
+                    this.refreshUI();
+                    showNotification(`تم حذف الخلية رقم ${id}.`, "info");
+                    hideModal();
+                }
+            });
+        };
+
+        this.calculateHealthScore = (hive) => {
+            let score = 50 + Math.min(5 * (hive.frames - 1), 40);
+            if (hive.queenStatus === "ملكة") score += 30;
+            else if (hive.queenStatus === "مكذبة") score -= 50;
+            
+            if (hive.notes && ["فاروا", "مرض", "ضعيفة", "مشكلة"].some(w => hive.notes.includes(w))) {
+                score -= 20;
+            }
+            return Math.max(0, Math.min(100, Math.round(score)));
+        };
+
+        this.getStockStatus = (hive) => {
+            const h = hive.honeyFrames || 0;
+            const p = hive.pollenFrames || 0;
+            if (h < 2 || p < 1) return `<span style="color: var(--deficit-color); font-weight: bold;">⚠️ نقص (${h}/${p})</span>`;
+            if (h > 5 || p > 2) return `<span style="color: var(--excess-color); font-weight: bold;">✅ فائض (${h}/${p})</span>`;
+            return `متوازن (${h}/${p})`;
+        };
+
+        this.displayHives = async () => {
+            const tbody = getElement("hives-table-body");
+            let hives = await this.loadHives();
+            const filter = getElement("hive-filter-input").value.toLowerCase();
+            
+            if (filter) {
+                hives = hives.filter(h => String(h.hiveId).includes(filter) || (h.notes && h.notes.toLowerCase().includes(filter)));
+            }
+
+            this.sortHives(hives, this.sortState.column, this.sortState.direction);
+
+            const fragment = document.createDocumentFragment();
+            hives.forEach(hive => {
+                const score = this.calculateHealthScore(hive);
+                const hue = score * 0.01 * 120; // 0=red, 120=green
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><input type="checkbox" class="hive-select-checkbox" data-hive-id="${hive.hiveId}"></td>
+                    <td>${hive.hiveId}</td>
+                    <td>${hive.frames}</td>
+                    <td><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
+                    <td>${hive.queenStatus} (سنة ${hive.queenYear || "?"})</td>
+                    <td>${this.getStockStatus(hive)}</td>
+                    <td><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
+                    <td class="actions-cell">
+                        <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
+                        <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
+                        <button style="background-color: var(--danger-color);" onclick="beehiveManager.getActive().deleteHive(${hive.hiveId})" title="حذف"><i class="fas fa-trash-alt"></i></button>
+                    </td>`;
+                fragment.appendChild(row);
+            });
+            tbody.innerHTML = "";
+            tbody.appendChild(fragment);
+            getElement("select-all-hives").checked = false;
+        };
+
+        this.calculateDashboardStats = async function () {
+            const hives = await this.loadHives();
+            const total = hives.length;
+            if (total === 0) return { total: 0, avgFrames: 0, strongPct: 0, weakPct: 0, queenStatus: { "ملكة": 0, "بدون ملكة": 0, "مكذبة": 0 } };
+
+            const stats = { totalFrames: 0, strongCount: 0, weakCount: 0, queenStatus: { "ملكة": 0, "بدون ملكة": 0, "مكذبة": 0 } };
+            hives.forEach(h => {
+                stats.totalFrames += h.frames;
+                if (h.frames > 6) stats.strongCount++;
+                if (h.frames < 4) stats.weakCount++;
+                stats.queenStatus[h.queenStatus] = (stats.queenStatus[h.queenStatus] || 0) + 1;
+            });
+
+            return {
+                total: total,
+                avgFrames: (stats.totalFrames / total).toFixed(1),
+                strongPct: (stats.strongCount / total * 100).toFixed(0),
+                weakPct: (stats.weakCount / total * 100).toFixed(0),
+                queenStatus: stats.queenStatus
+            };
+        };
+
+        this.displayDashboard = async function () {
+            const stats = await this.calculateDashboardStats();
+            getElement("db-total-hives").textContent = stats.total;
+            getElement("db-avg-frames").textContent = stats.avgFrames;
+            getElement("db-strong-hives").textContent = stats.strongPct + "%";
+            getElement("db-weak-hives").textContent = stats.weakPct + "%";
+
+            const totalQueens = Object.values(stats.queenStatus).reduce((a, b) => a + b, 0);
+            if (totalQueens > 0) {
+                const getPct = k => (stats.queenStatus[k] || 0) / totalQueens * 100;
+                const p1 = getPct("ملكة");
+                const p2 = p1 + getPct("بدون ملكة");
+                getElement("queen-pie-chart").style.background = `conic-gradient(var(--success-color) 0% ${p1}%, var(--warning-color) ${p1}% ${p2}%, var(--danger-color) ${p2}% 100%)`;
+            } else {
+                getElement("queen-pie-chart").style.background = "#ccc";
+            }
+        };
+
+        this.displayTasks = async function () {
+            const tasks = await this.loadTasks();
+            const list = getElement("todo-list");
+            list.innerHTML = tasks.length ? "" : '<li style="text-align: center; color: var(--text-color);">لا توجد مهام.</li>';
+            tasks.forEach(task => {
+                list.innerHTML += `<li><span>${task.text}</span><button class="delete-task" onclick="beehiveManager.getActive().deleteTask(${task.id})"><i class="fas fa-times-circle"></i></button></li>`;
+            });
+        };
+
+        // --- تعديل: إضافة مهمة مع الرفع المباشر ---
+        this.addTask = async function () {
+            const input = getElement("todo-input");
+            const text = input.value.trim();
+            if (text) {
+                const taskData = { siteId: this.siteId, text: text };
+                
+                // حفظ محلي والحصول على المعرف
+                const newTaskId = await DBHelper.add("tasks", taskData);
+                taskData.id = newTaskId;
+
+                // رفع سحابي مباشر
+                if (FirebaseHelper.currentUser) {
+                    await FirebaseHelper.saveItem("tasks", newTaskId, taskData);
+                }
+                
+                input.value = "";
+                this.displayTasks();
+            }
+        };
+
+        // --- تعديل: حذف مهمة مع الحذف المباشر ---
+        this.deleteTask = async function (id) {
+            await DBHelper.delete("tasks", id);
+            
+            // حذف سحابي مباشر
+            if (FirebaseHelper.currentUser) {
+                await FirebaseHelper.deleteItem("tasks", id);
+            }
+            
+            this.displayTasks();
+        };
+
+        this.clearInputs = () => {
+            ["hive-id", "queen-year", "notes"].forEach(id => getElement(id).value = "");
+            ["queen-status", "queen-marked"].forEach(id => getElement(id).selectedIndex = 0);
+            getElement("frames").value = "5";
+            getElement("honey-frames").value = "0";
+            getElement("pollen-frames").value = "0";
+        };
+
+        this.loadHiveForEdit = async (id) => {
+            const hives = await this.loadHives();
+            const hive = hives.find(h => h.hiveId === id);
+            if (hive) {
+                getElement("hive-id").value = hive.hiveId;
+                getElement("frames").value = hive.frames;
+                getElement("queen-status").value = hive.queenStatus;
+                getElement("queen-year").value = hive.queenYear;
+                getElement("queen-marked").value = hive.queenMarked;
+                getElement("notes").value = ""; 
+                getElement("honey-frames").value = hive.honeyFrames || 0;
+                getElement("pollen-frames").value = hive.pollenFrames || 0;
+
+                this.showMainTab('hives-tab');
+                getElement("notes").focus();
+            }
+        };
+
+        this.refreshUI = async () => {
+            this.displayDashboard();
+            this.displayHives();
+            this.displayTasks();
+            
+            const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value;
+            if (recsEnabled) generateSiteRecommendations(this);
+            else getElement("site-recommendations-list").innerHTML = "";
+        };
+
+        this.showMainTab = async (tabId) => {
+            getElement("global-stats-view").style.display = "none";
+            getElement("site-comparison-view").style.display = "none";
+            getElement("standard-view-wrapper").style.display = "block";
+
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".main-tabs .tab-button").forEach(el => el.classList.remove("active"));
+            
+            getElement(tabId).classList.add("active");
+            document.querySelector(`.tab-button[onclick*="${tabId}"]`).classList.add("active");
+
+            if (tabId === "analysis-tab") {
+                initializeAnalysisCharts();
+                await populateHiveSelector();
+                updateAnalysisCharts();
+            } else if (tabId === "stars-tab") {
+                updateStarCalculator();
+            }
+        };
+
+        this.sortHives = (hives, colIndex, direction) => {
+            const key = ["hiveId", "frames", "health", "queenStatus", "stock"][colIndex];
+            if (!key) return;
+
+            hives.sort((a, b) => {
+                let valA, valB;
+                if (key === "health") {
+                    valA = this.calculateHealthScore(a);
+                    valB = this.calculateHealthScore(b);
+                } else if (key === "stock") {
+                    valA = (a.honeyFrames || 0) + (a.pollenFrames || 0);
+                    valB = (b.honeyFrames || 0) + (b.pollenFrames || 0);
+                } else {
+                    valA = a[key];
+                    valB = b[key];
+                }
+
+                if (typeof valA === "number") {
+                    return direction === "asc" ? valA - valB : valB - valA;
+                } else {
+                    return direction === "asc" ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+                }
+            });
+        };
+
+        this.sortTable = async (colIndex) => {
+            this.sortState.direction = (this.sortState.column === colIndex && this.sortState.direction === "asc") ? "desc" : "asc";
+            this.sortState.column = colIndex;
+            
+            const siteData = await DBHelper.get("sites", this.siteId);
+            siteData.sortState = this.sortState;
+            await DBHelper.put("sites", siteData);
+            
+            this.displayHives();
+        };
+    }
+
+    // ==========================================
+    // وظائف العرض الشامل والمقارنة
+    // ==========================================
+    async function showHiveHistory(hiveId) {
+        const manager = beehiveManager.getActive();
+        const history = await manager.loadHistoryForHive(hiveId);
+        
+        if (history.length === 0) return showNotification("لا يوجد سجل لهذه الخلية.", "info");
+
+        let html = `
+            <div class="table-wrapper"><table style="min-width: 100%;">
+                <thead><tr><th>التاريخ</th><th>الإطارات</th><th>حالة الملكة</th><th>المخزون (ع/ك)</th><th>الملاحظات</th></tr></thead>
+                <tbody>${history.slice().reverse().map(rec => `
+                    <tr>
+                        <td>${(new Date(rec.date)).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
+                        <td>${rec.frames}</td><td>${rec.queenStatus}</td><td>${rec.honeyFrames || 0}/${rec.pollenFrames || 0}</td>
+                        <td style="text-align: right; white-space: pre-wrap;">${rec.notes || "-"}</td>
+                    </tr>`).join('')}
+                </tbody></table></div>`;
+        
+        showModal({ title: `سجل الخلية رقم ${hiveId}`, customHTML: html, showConfirm: false, cancelText: "إغلاق" });
+    }
+
+    async function showGlobalStatsView() {
+        getElement("standard-view-wrapper").style.display = "none";
+        getElement("site-comparison-view").style.display = "none";
+        getElement("global-stats-view").style.display = "block";
+        
+        const site = await DBHelper.get("sites", activeSiteId);
+        getElement("active-location-title").textContent = `إحصائيات شاملة - ${site.name}`;
+        await renderGlobalCharts();
+    }
+
+    async function renderGlobalCharts() {
+        Object.values(globalCharts).forEach(chart => chart.destroy());
+        globalCharts = {};
+
+        const manager = beehiveManager.getActive();
+        const hives = await manager.loadHives();
+        const history = await manager.loadHistory();
+
+        const strengthCounts = { "ضعيفة (1-3)": 0, "متوسطة (4-6)": 0, "قوية (7+)": 0 };
+        hives.forEach(h => {
+            if (h.frames <= 3) strengthCounts["ضعيفة (1-3)"]++;
+            else if (h.frames <= 6) strengthCounts["متوسطة (4-6)"]++;
+            else strengthCounts["قوية (7+)"]++;
+        });
+
+        globalCharts.strength = new Chart(getElement("globalStrengthCanvas"), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(strengthCounts),
+                datasets: [{
+                    data: Object.values(strengthCounts),
+                    backgroundColor: ["rgba(231, 76, 60, 0.6)", "rgba(241, 196, 15, 0.6)", "rgba(39, 174, 96, 0.6)"],
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        const queenAges = {};
+        hives.forEach(h => {
+            const year = h.queenYear || "غير معروف";
+            queenAges[year] = (queenAges[year] || 0) + 1;
+        });
+        const sortedYears = Object.keys(queenAges).sort((a, b) => b.localeCompare(a));
+
+        globalCharts.queenAge = new Chart(getElement("globalQueenAgeCanvas"), {
+            type: 'doughnut',
+            data: {
+                labels: sortedYears,
+                datasets: [{
+                    data: sortedYears.map(y => queenAges[y]),
+                    backgroundColor: ["#3498db", "#2ecc71", "#f1c40f", "#e74c3c", "#9b59b6", "#34495e"]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const weeklyData = {};
+        history.forEach(rec => {
+            const d = new Date(rec.date);
+            const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+            weeklyData[key] = weeklyData[key] || [];
+            weeklyData[key].push(rec.frames);
+        });
+
+        const sortedMonths = Object.keys(weeklyData).sort();
+        const averages = sortedMonths.map(m => weeklyData[m].reduce((a, b) => a + b, 0) / weeklyData[m].length);
+        
+        let displayMonths = sortedMonths;
+        if (window.innerWidth < 768 && sortedMonths.length > 8) {
+            displayMonths = sortedMonths.filter((_, i) => i % Math.ceil(sortedMonths.length / 8) === 0);
+        }
+
+        globalCharts.weeklyAvg = new Chart(getElement("globalWeeklyAvgCanvas"), {
+            type: 'line',
+            data: { labels: displayMonths, datasets: [{ label: "متوسط عدد الإطارات", data: averages, tension: 0.1, fill: false }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const theme = (await DBHelper.get("settings", "theme"))?.value || "light";
+        applyTheme(theme);
+    }
+
+    async function showSiteComparisonView() {
+        getElement("standard-view-wrapper").style.display = "none";
+        getElement("global-stats-view").style.display = "none";
+        getElement("site-comparison-view").style.display = "block";
+        getElement("active-location-title").textContent = "مقارنة شاملة بين جميع المواقع";
+
+        Object.values(comparisonCharts).forEach(chart => chart.destroy());
+        comparisonCharts = {};
+
+        const dataPoints = [];
+        for (const site of sites) {
+            const mgr = beehiveManager.get(site.id);
+            const hives = await mgr.loadHives();
+            if (hives.length === 0) continue;
+
+            const stats = { strong: 0, medium: 0, weak: 0, totalHoney: 0, totalFrames: 0 };
+            hives.forEach(h => {
+                stats.totalFrames += h.frames;
+                stats.totalHoney += h.honeyFrames || 0;
+                if (h.frames > 6) stats.strong++;
+                else if (h.frames < 4) stats.weak++;
+                else stats.medium++;
+            });
+
+            dataPoints.push({
+                name: site.name,
+                avgStrength: (stats.totalFrames / hives.length).toFixed(1),
+                avgHoney: (stats.totalHoney / hives.length).toFixed(1),
+                strongPct: stats.strong / hives.length * 100,
+                mediumPct: stats.medium / hives.length * 100,
+                weakPct: stats.weak / hives.length * 100
+            });
+        }
+
+        const labels = dataPoints.map(d => d.name);
+
+        comparisonCharts.avgStrength = new Chart(getElement("siteAvgStrengthCanvas"), {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: "متوسط عدد الإطارات", data: dataPoints.map(d => d.avgStrength), backgroundColor: "rgba(52, 152, 219, 0.7)" }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+
+        comparisonCharts.strengthDist = new Chart(getElement("siteStrengthDistCanvas"), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: "خلايا قوية (%)", data: dataPoints.map(d => d.strongPct), backgroundColor: "rgba(39, 174, 96, 0.7)" },
+                    { label: "خلايا متوسطة (%)", data: dataPoints.map(d => d.mediumPct), backgroundColor: "rgba(241, 196, 15, 0.7)" },
+                    { label: "خلايا ضعيفة (%)", data: dataPoints.map(d => d.weakPct), backgroundColor: "rgba(231, 76, 60, 0.7)" }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100, ticks: { callback: v => v + "%" } } } }
+        });
+
+        comparisonCharts.avgHoney = new Chart(getElement("siteAvgHoneyCanvas"), {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: "متوسط إطارات العسل المختوم", data: dataPoints.map(d => d.avgHoney), backgroundColor: "rgba(243, 156, 18, 0.7)" }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+
+        const theme = (await DBHelper.get("settings", "theme"))?.value || "light";
+        applyTheme(theme);
+    }
+
+    // ==========================================
+    // إدارة المواقع (Sites Management)
+    // ==========================================
+    async function enableSiteRename(siteId, nameSpan) {
+        const oldName = nameSpan.textContent;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "site-name-input";
+        input.value = oldName;
+
+        const save = async () => {
+            const newName = input.value.trim();
+            if (sites.some(s => s.id !== siteId && s.name.toLowerCase() === newName.toLowerCase())) {
+                showNotification("هذا الاسم مستخدم بالفعل لموقع آخر.", "error");
+            } else if (newName && newName !== oldName) {
+                const siteData = await DBHelper.get("sites", siteId);
+                siteData.name = newName;
+                await DBHelper.put("sites", siteData);
+                
+                // مزامنة مع السحابة إذا كان المستخدم مسجل الدخول
+                if (FirebaseHelper.currentUser) {
+                    FirebaseHelper.syncLocalToCloud();
+                }
+                
+                if (activeSiteId === siteId) getElement("active-location-title").textContent = newName;
+                showNotification("تم تحديث اسم الموقع.", "success");
+            }
+            createSiteButtons();
+        };
+
+        input.addEventListener("blur", save);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") input.blur();
+            if (e.key === "Escape") { input.value = oldName; input.blur(); }
+        });
+
+        nameSpan.style.display = "none";
+        nameSpan.parentNode.insertBefore(input, nameSpan.nextSibling);
+        input.focus();
+    }
+
+    async function createSiteButtons() {
+        sites = await DBHelper.getAll("sites");
+        const container = getElement("sites-menu-content");
+        container.innerHTML = "";
+        
+        sites.forEach(site => {
+            const btn = document.createElement("button");
+            btn.className = "site-button";
+            btn.onclick = (e) => {
+                if (!e.target.closest(".site-button-controls")) openSite(site.id);
+            };
+            btn.innerHTML = `
+                <i class="fas fa-warehouse"></i> <span class="sidebar-text site-name-span">${site.name}</span>
+                <div class="site-button-controls">
+                    <button class="site-control-btn" onclick="enableSiteRename('${site.id}', this.parentNode.previousElementSibling)" title="إعادة تسمية"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="site-control-btn" onclick="deleteSite('${site.id}', '${site.name}')" title="حذف"><i class="fas fa-trash-alt" style="color:var(--danger-color)"></i></button>
+                </div>`;
+            container.appendChild(btn);
+        });
+
+        const addBtn = document.createElement("button");
+        addBtn.className = "site-button";
+        addBtn.style.backgroundColor = "var(--success-color)";
+        addBtn.innerHTML = '<i class="fas fa-plus-circle"></i> <span class="sidebar-text">إضافة موقع جديد</span>';
+        addBtn.onclick = addSite;
+        container.appendChild(addBtn);
+    }
+
+    function deleteSite(id, name) {
+        showModal({
+            title: `تأكيد حذف الموقع: ${name}`,
+            message: `للتأكيد، الرجاء كتابة اسم الموقع "${name}" في الحقل أدناه. سيتم حذف جميع بياناته بشكل نهائي.`,
+            customHTML: '<input type="text" id="delete-confirm-input" placeholder="اكتب اسم الموقع هنا" style="margin-top:10px;">',
+            confirmText: "حذف نهائي",
+            onConfirm: async () => {
+                if (getElement("delete-confirm-input").value !== name) {
+                    return showNotification("الاسم الذي أدخلته غير مطابق!", "error");
+                }
+
+                // --- التعامل مع السحابة: حذف البيانات المرتبطة أولاً ---
+                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                    showNotification("جاري الحذف من السحابة...", "info");
+                    
+                    try {
+                        // 1. جلب البيانات المرتبطة لحذفها من السحابة
+                        const associatedHives = await DBHelper.getAll("hives", "siteId", id);
+                        const associatedTasks = await DBHelper.getAll("tasks", "siteId", id);
+
+                        // 2. حذف الخلايا من السحابة
+                        for (const hive of associatedHives) {
+                            if (hive.recordId) await FirebaseHelper.deleteItem("hives", hive.recordId);
+                        }
+
+                        // 3. حذف المهام من السحابة
+                        for (const task of associatedTasks) {
+                            if (task.id) await FirebaseHelper.deleteItem("tasks", task.id);
+                        }
+
+                        // 4. حذف الموقع نفسه من السحابة
+                        await FirebaseHelper.deleteItem("sites", id);
+                    } catch (e) {
+                        console.error("خطأ في الحذف السحابي:", e);
+                    }
+                }
+                // --- نهاية التعامل مع السحابة ---
+
+                // الحذف المحلي
+                await DBHelper.delete("sites", id);
+                await DBHelper.deleteByIndex("hives", "siteId", id);
+                await DBHelper.deleteByIndex("tasks", "siteId", id);
+                managers.delete(id);
+                
+                showNotification(`تم حذف الموقع "${name}" بشكل نهائي.`, "info");
+                hideModal();
+                
+                sites = sites.filter(s => s.id !== id);
+                if (activeSiteId === id) {
+                    sites.length > 0 ? openSite(sites[0].id) : addSite();
+                }
+                createSiteButtons();
+            }
+        });
+    }
+
+    async function addSite() {
+        const id = "site_" + Date.now();
+        let existingSites = await DBHelper.getAll("sites");
+        let num = existingSites.length + 1;
+        let name = `الموقع ${num}`;
+        
+        // التأكد من عدم تكرار الاسم
+        while (existingSites.some(s => s.name === name)) {
+            num++;
+            name = `الموقع ${num}`;
+        }
+
+        const newSiteData = { id: id, name: name, sortState: { column: 2, direction: "desc" } };
+
+        // 1. الحفظ المحلي
+        await DBHelper.add("sites", newSiteData);
+        managers.set(id, new BeehiveManager(id));
+        
+        // 2. الحفظ السحابي المباشر (بدلاً من المزامنة الكاملة)
+        if (FirebaseHelper.currentUser) {
+            await FirebaseHelper.saveItem("sites", id, newSiteData);
+        }
+        
+        await createSiteButtons();
+        openSite(id);
+        showNotification("تم إنشاء موقع جديد بنجاح.", "success");
+    }
+
+    async function openSite(id) {
+        if (!managers.has(id)) managers.set(id, new BeehiveManager(id));
+        activeSiteId = id;
+        await DBHelper.put("settings", { key: "activeSiteId", value: id });
+
+        getElement("global-stats-view").style.display = "none";
+        getElement("site-comparison-view").style.display = "none";
+        getElement("standard-view-wrapper").style.display = "block";
+
+        const siteData = await DBHelper.get("sites", id);
+        getElement("active-location-title").textContent = siteData.name;
+
+        document.querySelectorAll(".site-button").forEach(b => b.classList.remove("active"));
+        const activeBtn = Array.from(document.querySelectorAll(".site-button")).find(b => b.innerHTML.includes(siteData.name));
+        if (activeBtn) activeBtn.classList.add("active");
+
+        const manager = beehiveManager.getActive();
+        manager.sortState = siteData.sortState || { column: 2, direction: "desc" };
+        manager.refreshUI();
+        manager.showMainTab("dashboard-tab");
+    }
+
+    // ==========================================
+    // خلية التواصل (Honeycom)
+    // ==========================================
+    function openHoneycom() {
+        const modal = getElement("honeycom-modal");
+        const grid = modal.querySelector(".honeycomb-grid");
+        grid.innerHTML = "";
+        
+        const staticCells = [
+            { icon: "fas fa-bullhorn", text: "تحديث جديد قادم قريباً!" },
+            { icon: "fas fa-question-circle", text: "كيفية تصدير البيانات؟" }
+        ];
+
+        for (let i = 0; i < 7; i++) {
+            const cell = document.createElement("div");
+            cell.className = "honeycomb-cell";
+            if (i < staticCells.length) {
+                cell.classList.add("pinned");
+                cell.innerHTML = `<i class="${staticCells[i].icon}"></i>`;
+                cell.title = staticCells[i].text;
+            } else {
+                cell.innerHTML = '<i class="fas fa-plus"></i>';
+                cell.title = "أضف رسالة جديدة";
+                cell.onclick = () => {
+                    getElement("honeycom-form").classList.remove("feature-hidden");
+                    getElement("honeycom-send-btn").classList.remove("feature-hidden");
+                };
+            }
+            grid.appendChild(cell);
+        }
+        modal.style.display = "flex";
+    }
+
+    function closeHoneycom() {
+        getElement("honeycom-modal").style.display = "none";
+        getElement("honeycom-form").classList.add("feature-hidden");
+        getElement("honeycom-send-btn").classList.add("feature-hidden");
+        getElement("honeycom-message").value = "";
+    }
+
+    async function sendHoneycomMessage() {
+        const type = getElement("honeycom-type").value;
+        const message = getElement("honeycom-message").value.trim();
+        const publishOk = getElement("honeycom-publish-ok").checked;
+
+        if (!message) return showNotification("الرجاء كتابة رسالتك أولاً.", "warning");
+
+        const btn = getElement("honeycom-send-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جار الإرسال...';
+        
+        try {
+            const response = await fetch("https://formspree.io/f/mldppkgp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type, message, publish_permission: publishOk, sent_from: "Beehive App Pro" })
+            });
+            if (response.ok) {
+                showNotification("🍯 تم إيصال رسالتك بنجاح!", "success");
+                closeHoneycom();
+            } else {
+                throw new Error("فشل الإرسال");
+            }
+        } catch (err) {
+            showNotification("حدث خطأ أثناء إرسال الرسالة. حاول مجدداً.", "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال';
+        }
+    }
+
+    // ==========================================
+    // إدارة مصادقة Firebase
+    // ==========================================
+    function showFirebaseAuthModal() {
+        getElement("firebase-modal").style.display = "flex";
+    }
+
+    function hideFirebaseAuthModal() {
+        getElement("firebase-modal").style.display = "none";
+    }
+
+    async function signInWithGoogle() {
+        await FirebaseHelper.signInWithGoogle();
+        hideFirebaseAuthModal();
+    }
+
+    async function signInWithEmail() {
+        showModal({
+            title: "تسجيل الدخول بالبريد الإلكتروني",
+            message: "أدخل بيانات حسابك للمتابعة",
+            customHTML: `
+                <input type="email" id="email-input" placeholder="البريد الإلكتروني" style="margin-bottom: 15px;">
+                <div class="password-wrapper">
+                    <input type="password" id="password-input" placeholder="كلمة المرور">
+                    <i class="fas fa-eye password-toggle-icon" onclick="togglePassword('password-input', this)"></i>
+                </div>
+            `,
+            confirmText: "تسجيل الدخول",
+            onConfirm: async () => {
+                const email = getElement("email-input").value;
+                const password = getElement("password-input").value;
+                if (!email || !password) {
+                    return showNotification("الرجاء ملء جميع الحقول", "error");
+                }
+                // إخفاء النافذة العامة أولاً
+                hideModal(); 
+                // محاولة تسجيل الدخول
+                await FirebaseHelper.signInWithEmail(email, password);
+                // إغلاق نافذة السحابة الخلفية
+                hideFirebaseAuthModal();
+            }
+        });
+    }
+
+    async function signUpWithEmail() {
+        showModal({
+            title: "إنشاء حساب جديد",
+            message: "يرجى تعيين كلمة مرور قوية (6 أحرف على الأقل)",
+            customHTML: `
+                <input type="email" id="new-email-input" placeholder="البريد الإلكتروني" style="margin-bottom: 15px;">
+                <div class="password-wrapper">
+                    <input type="password" id="new-password-input" placeholder="كلمة المرور (6 أحرف على الأقل)">
+                    <i class="fas fa-eye password-toggle-icon" onclick="togglePassword('new-password-input', this)"></i>
+                </div>
+            `,
+            confirmText: "إنشاء حساب",
+            onConfirm: async () => {
+                const email = getElement("new-email-input").value;
+                const password = getElement("new-password-input").value;
+                if (!email || !password) {
+                    return showNotification("الرجاء ملء جميع الحقول", "error");
+                }
+                if (password.length < 6) {
+                    return showNotification("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error");
+                }
+                // إخفاء النافذة العامة أولاً
+                hideModal();
+                // محاولة إنشاء الحساب
+                await FirebaseHelper.signUpWithEmail(email, password);
+                // إغلاق نافذة السحابة الخلفية
+                hideFirebaseAuthModal();
+            }
+        });
+    }
+
+    async function skipLogin() {
+        hideFirebaseAuthModal();
+        showNotification("يتم الآن العمل محلياً بدون مزامنة سحابية", "info");
+        getElement("main-app-content").classList.remove("app-hidden");
+        initializeApp();
+    }
+
+    async function signOut() {
+        await FirebaseHelper.signOut();
+    }
+
+    // ==========================================
+    // تهيئة التطبيق (Initialization)
+    // ==========================================
+    async function initializeApp() {
+        const theme = (await DBHelper.get("settings", "theme"))?.value || "light";
+        applyTheme(theme);
+
+        const starsEnabled = (await DBHelper.get("settings", "starsFeature"))?.value ?? false;
+        getElement("stars-feature-checkbox").checked = starsEnabled;
+        applyStarsFeature(starsEnabled);
+
+        const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value ?? false;
+        getElement("recs-feature-checkbox").checked = recsEnabled;
+        applyRecsFeature(recsEnabled);
+
+        sites = await DBHelper.getAll("sites");
+        if (sites.length === 0) return addSite();
+
+        sites.forEach(s => managers.set(s.id, new BeehiveManager(s.id)));
+        await createSiteButtons();
+
+        const lastActive = (await DBHelper.get("settings", "activeSiteId"))?.value;
+        const targetSite = sites.find(s => s.id === lastActive) ? lastActive : sites[0].id;
+        openSite(targetSite);
+
+        getElement("hive-filter-input").addEventListener("keyup", debounce(() => beehiveManager.getActive().displayHives(), 300));
+        
+        getElement("select-all-hives").addEventListener("change", (e) => {
+            document.querySelectorAll(".hive-select-checkbox").forEach(cb => cb.checked = e.target.checked);
+        });
+
+        window.addEventListener("resize", debounce(() => {
+            if (getElement("analysis-tab").classList.contains("active")) updateAnalysisCharts();
+            if (getElement("global-stats-view").style.display === "block") renderGlobalCharts();
+        }, 250));
+    }
+
+    // تصدير الوظائف للـ Global Scope لتعمل مع HTML onclick
+        // ==========================================
+    // دالة تأكيد الخروج (انسخ هذا والصقه قبل نهاية السكربت)
+    // ==========================================
+    function confirmSignOut() {
+        showModal({
+            title: "تسجيل الخروج",
+            message: "هل أنت متأكد أنك تريد تسجيل الخروج؟ سيتم إيقاف المزامنة السحابية.",
+            confirmText: "نعم، خروج",
+            onConfirm: async () => {
+                hideModal();
+                await FirebaseHelper.signOut();
+            },
+            cancelText: "تراجع"
+        });
+    }
+
+    // ربط الدوال لكي تعمل في الصفحة
+    Object.assign(window, {
+        toggleSidebar: () => getElement("main-sidebar").classList.toggle("collapsed"),
+        toggleMenu: (header) => header.nextElementSibling.classList.toggle("open"),
+        showFormTab,
+        toggleQuickActionsMenu,
+        performQuickAction,
+        showChart,
+        updateAnalysisCharts,
+        showGlobalStatsView,
+        openSite,
+        showSiteComparisonView,
+        addSite,
+        deleteSite,
+        enableSiteRename,
+        showHiveHistory,
+        beehiveManager,
+        openHoneycom,
+        closeHoneycom,
+        sendHoneycomMessage,
+        addReviewTask,
+        changeValue: function(id, delta) {
+            const el = getElement(id);
+            let val = parseInt(el.value || "0", 10);
+            let newVal = val + delta;
+            if (newVal < 0) newVal = 0;
+            if (id === "frames" && newVal > 10) newVal = 10;
+            el.value = newVal;
+        },
+        goBackToDashboard: () => openSite(activeSiteId),
+        importData,
+        exportData,
+        showFirebaseAuthModal,
+        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
+        skipLogin,
+        signOut,
+        confirmSignOut, // <--- هذه هي الإضافة المهمة هنا
+        toggleTheme,
+        toggleStarsFeature,
+        toggleRecsFeature
+    });
+
+    // إغلاق القوائم المنبثقة عند النقر خارجها
+    window.addEventListener("click", function(event) {
+        const menu = getElement("quick-actions-menu");
+        const btn = getElement("quick-actions-btn");
+        if (menu && btn && menu.style.display === "block" && !menu.contains(event.target) && !btn.contains(event.target)) {
+            menu.style.display = "none";
+        }
+        
+        const firebaseModal = getElement("firebase-modal");
+        const firebaseBox = getElement("firebase-box");
+        if (firebaseModal.style.display === "flex" && !firebaseBox.contains(event.target)) {
+            hideFirebaseAuthModal();
+        }
+    });
+
+    // نقطة الدخول الرئيسية
+    window.onload = async function () {
+        try {
+            await DBHelper.init();
+            
+            // تهيئة التطبيق الأساسية
+            await initializeApp();
+
+            // تهيئة فايربيس
+            await FirebaseHelper.init();
+            
+            // التحقق الذكي: هل المستخدم مسجل دخول بالفعل؟
+            // ننتظر قليلاً للتحقق من حالة المصادقة قبل عرض النافذة
+            // إذا لم يكن هناك مستخدم مسجل مسبقاً في الجلسة، نعرض النافذة
+            // لكن onAuthStateChanged ستقوم بإخفائها إذا اكتشفت المستخدم
+            
+            setTimeout(() => {
+                if (!auth.currentUser && !document.body.classList.contains('local-mode')) {
+                   // اعرض النافذة فقط إذا لم يتم اكتشاف مستخدم بعد ثانية واحدة
+                   // ولم يقم المستخدم بتخطي التسجيل (وضع محلي)
+                   // ملاحظة: يمكنك إزالة هذا الشرط لفرض الظهور دائماً للزوار الجدد
+                   
+                   // إذا كنت تريدها أن تظهر دائماً في البداية لغير المسجلين:
+                   if (!auth.currentUser) {
+                       showFirebaseAuthModal();
+                   }
+                }
+            }, 1000);
+            
+        } catch (e) {
+            console.error("Failed to initialize the application:", e);
+            showNotification("فشل تهيئة التطبيق، سيتم العمل محلياً", "error");
+            getElement("main-app-content").classList.remove("app-hidden");
+            // initializeApp already called
+        }
+    };
+})();
+
+</script>
+<script>
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then((registration) => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, (err) => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
+</script>
+</body>
+</html>
