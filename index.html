@@ -1885,39 +1885,28 @@ window.togglePassword = function(inputId, icon) {
                 pollenFrames: parseInt(getElement("pollen-frames").value) || 0
             };
 
-            try {
-                // 1. الحفظ محلياً والحصول على المعرف (هذا سريع جداً ومضمون)
-                const newRecordId = await DBHelper.add("hives", record);
-                record.recordId = newRecordId;
-                
-                // 2. تحديث الواجهة والإشعار فوراً (قبل انتظار السحابة)
-                this.refreshUI();
-                this.clearInputs();
-                showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
-
-                // 3. الرفع للسحابة في الخلفية (بدون await لكي لا ننتظر النت)
-                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                    FirebaseHelper.saveItem("hives", newRecordId, record).catch(err => {
-                        console.log("سيتم المزامنة عند توفر الإنترنت");
-                    });
-                }
-            } catch (error) {
-                console.error(error);
-                showNotification("حدث خطأ في الحفظ المحلي!", "error");
+            // 1. الحفظ محلياً والحصول على المعرف
+            const newRecordId = await DBHelper.add("hives", record);
+            record.recordId = newRecordId;
+            
+            // 2. الرفع المباشر للسحابة
+            if (FirebaseHelper.currentUser) {
+                await FirebaseHelper.saveItem("hives", newRecordId, record);
             }
+            
+            this.refreshUI();
+            this.clearInputs();
+            showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
         };
 
         // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر ---
-                this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
+        this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
             const allHives = await this.loadHives();
             const targets = allHives.filter(h => hiveIds.includes(h.hiveId));
 
-            // مصفوفة لتخزين عمليات الرفع للسحابة لتنفيذها لاحقاً
-            const cloudPromises = [];
-
             for (const hive of targets) {
                 const newRecord = { ...hive };
-                delete newRecord.recordId; 
+                delete newRecord.recordId; // حذف المعرف القديم
                 newRecord.date = new Date().toISOString();
                 
                 if (framesChange !== 0) newRecord.frames = Math.max(1, newRecord.frames + framesChange);
@@ -1929,23 +1918,16 @@ window.togglePassword = function(inputId, icon) {
 
                 newRecord.notes = noteText;
                 
-                // حفظ محلي (ننتظره لأنه سريع)
+                // حفظ محلي + رفع سحابي
                 const newId = await DBHelper.add("hives", newRecord);
                 newRecord.recordId = newId;
 
-                // نجهز الرفع للسحابة لكن لا ننتظره هنا
-                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                    cloudPromises.push(FirebaseHelper.saveItem("hives", newId, newRecord));
+                if (FirebaseHelper.currentUser) {
+                    await FirebaseHelper.saveItem("hives", newId, newRecord);
                 }
             }
             
-            // تحديث الواجهة فوراً بعد انتهاء الحفظ المحلي
             this.refreshUI();
-            
-            // تنفيذ عمليات السحابة في الخلفية
-            if (cloudPromises.length > 0) {
-                Promise.all(cloudPromises).catch(err => console.log("Background sync queued"));
-            }
         };
 
         // --- تعديل: دالة الحذف مع الحذف المباشر من السحابة ---
@@ -2085,22 +2067,17 @@ window.togglePassword = function(inputId, icon) {
             if (text) {
                 const taskData = { siteId: this.siteId, text: text };
                 
-                try {
-                    // حفظ محلي
-                    const newTaskId = await DBHelper.add("tasks", taskData);
-                    taskData.id = newTaskId;
+                // حفظ محلي والحصول على المعرف
+                const newTaskId = await DBHelper.add("tasks", taskData);
+                taskData.id = newTaskId;
 
-                    // تحديث الواجهة فوراً
-                    input.value = "";
-                    this.displayTasks(); // تحديث القائمة فوراً
-                    
-                    // رفع سحابي في الخلفية (بدون await)
-                    if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                        FirebaseHelper.saveItem("tasks", newTaskId, taskData).catch(e => console.log("Sync pending"));
-                    }
-                } catch (e) {
-                    showNotification("خطأ في إضافة المهمة", "error");
+                // رفع سحابي مباشر
+                if (FirebaseHelper.currentUser) {
+                    await FirebaseHelper.saveItem("tasks", newTaskId, taskData);
                 }
+                
+                input.value = "";
+                this.displayTasks();
             }
         };
 
