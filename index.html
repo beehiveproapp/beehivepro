@@ -2427,75 +2427,60 @@ window.togglePassword = function(inputId, icon) {
     }
 
     function deleteSite(id, name) {
-    showModal({
-        title: `تأكيد حذف الموقع: ${name}`,
-        message: `للتأكيد، الرجاء كتابة اسم الموقع "${name}" في الحقل أدناه. سيتم حذف جميع بياناته بشكل نهائي.`,
-        customHTML: '<input type="text" id="delete-confirm-input" placeholder="اكتب اسم الموقع هنا" style="margin-top:10px;">',
-        confirmText: "حذف نهائي",
-        onConfirm: async () => {
-            if (getElement("delete-confirm-input").value !== name) {
-                return showNotification("الاسم الذي أدخلته غير مطابق!", "error");
-            }
-
-            const btn = getElement("modal-confirm-btn");
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحذف...';
-            btn.disabled = true;
-
-            try {
-                // 1. التعامل مع السحابة بنظام الحزمة (Batch)
-                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                    const userId = FirebaseHelper.currentUser.uid;
-                    const batch = db.batch(); // إنشاء حزمة جديدة
-                    
-                    // جمع بيانات الخلايا للحذف
-                    const associatedHives = await DBHelper.getAll("hives", "siteId", id);
-                    associatedHives.forEach(hive => {
-                        if (hive.recordId) {
-                            const ref = db.collection("users").doc(userId).collection("hives").doc(String(hive.recordId));
-                            batch.delete(ref);
-                        }
-                    });
-
-                    // جمع بيانات المهام للحذف
-                    const associatedTasks = await DBHelper.getAll("tasks", "siteId", id);
-                    associatedTasks.forEach(task => {
-                        if (task.id) {
-                            const ref = db.collection("users").doc(userId).collection("tasks").doc(String(task.id));
-                            batch.delete(ref);
-                        }
-                    });
-
-                    // حذف الموقع نفسه
-                    const siteRef = db.collection("users").doc(userId).collection("sites").doc(String(id));
-                    batch.delete(siteRef);
-
-                    // تنفيذ الحزمة (حتى لو لم يكن هناك نت، سيتم تسجيلها كعملية واحدة)
-                    // هذا يخبر Firebase SDK فوراً أن هذه البيانات محذوفة
-                    await batch.commit();
-                    console.log("تم تسجيل الحذف السحابي (Batch)");
+        showModal({
+            title: `تأكيد حذف الموقع: ${name}`,
+            message: `للتأكيد، الرجاء كتابة اسم الموقع "${name}" في الحقل أدناه. سيتم حذف جميع بياناته بشكل نهائي.`,
+            customHTML: '<input type="text" id="delete-confirm-input" placeholder="اكتب اسم الموقع هنا" style="margin-top:10px;">',
+            confirmText: "حذف نهائي",
+            onConfirm: async () => {
+                if (getElement("delete-confirm-input").value !== name) {
+                    return showNotification("الاسم الذي أدخلته غير مطابق!", "error");
                 }
-            } catch (e) {
-                console.error("خطأ في الحذف السحابي:", e);
-                // لن نوقف العملية، سنكمل الحذف المحلي
-            }
 
-            // 2. الحذف المحلي (IndexedDB)
-            await DBHelper.delete("sites", id);
-            await DBHelper.deleteByIndex("hives", "siteId", id);
-            await DBHelper.deleteByIndex("tasks", "siteId", id);
-            managers.delete(id);
-            
-            showNotification(`تم حذف الموقع "${name}" بشكل نهائي.`, "info");
-            hideModal();
-            
-            sites = sites.filter(s => s.id !== id);
-            if (activeSiteId === id) {
-                sites.length > 0 ? openSite(sites[0].id) : addSite();
+                // --- التعامل مع السحابة: حذف البيانات المرتبطة أولاً ---
+                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                    showNotification("جاري الحذف من السحابة...", "info");
+                    
+                    try {
+                        // 1. جلب البيانات المرتبطة لحذفها من السحابة
+                        const associatedHives = await DBHelper.getAll("hives", "siteId", id);
+                        const associatedTasks = await DBHelper.getAll("tasks", "siteId", id);
+
+                        // 2. حذف الخلايا من السحابة
+                        for (const hive of associatedHives) {
+                            if (hive.recordId) await FirebaseHelper.deleteItem("hives", hive.recordId);
+                        }
+
+                        // 3. حذف المهام من السحابة
+                        for (const task of associatedTasks) {
+                            if (task.id) await FirebaseHelper.deleteItem("tasks", task.id);
+                        }
+
+                        // 4. حذف الموقع نفسه من السحابة
+                        await FirebaseHelper.deleteItem("sites", id);
+                    } catch (e) {
+                        console.error("خطأ في الحذف السحابي:", e);
+                    }
+                }
+                // --- نهاية التعامل مع السحابة ---
+
+                // الحذف المحلي
+                await DBHelper.delete("sites", id);
+                await DBHelper.deleteByIndex("hives", "siteId", id);
+                await DBHelper.deleteByIndex("tasks", "siteId", id);
+                managers.delete(id);
+                
+                showNotification(`تم حذف الموقع "${name}" بشكل نهائي.`, "info");
+                hideModal();
+                
+                sites = sites.filter(s => s.id !== id);
+                if (activeSiteId === id) {
+                    sites.length > 0 ? openSite(sites[0].id) : addSite();
+                }
+                createSiteButtons();
             }
-            createSiteButtons();
-        }
-    });
-}
+        });
+    }
 
     async function addSite() {
         const id = "site_" + Date.now();
