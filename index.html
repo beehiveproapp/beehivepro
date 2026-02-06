@@ -1885,28 +1885,39 @@ window.togglePassword = function(inputId, icon) {
                 pollenFrames: parseInt(getElement("pollen-frames").value) || 0
             };
 
-            // 1. الحفظ محلياً والحصول على المعرف
-            const newRecordId = await DBHelper.add("hives", record);
-            record.recordId = newRecordId;
-            
-            // 2. الرفع المباشر للسحابة
-            if (FirebaseHelper.currentUser) {
-                await FirebaseHelper.saveItem("hives", newRecordId, record);
+            try {
+                // 1. الحفظ محلياً والحصول على المعرف (هذا سريع جداً ومضمون)
+                const newRecordId = await DBHelper.add("hives", record);
+                record.recordId = newRecordId;
+                
+                // 2. تحديث الواجهة والإشعار فوراً (قبل انتظار السحابة)
+                this.refreshUI();
+                this.clearInputs();
+                showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
+
+                // 3. الرفع للسحابة في الخلفية (بدون await لكي لا ننتظر النت)
+                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                    FirebaseHelper.saveItem("hives", newRecordId, record).catch(err => {
+                        console.log("سيتم المزامنة عند توفر الإنترنت");
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                showNotification("حدث خطأ في الحفظ المحلي!", "error");
             }
-            
-            this.refreshUI();
-            this.clearInputs();
-            showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
         };
 
         // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر ---
-        this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
+                this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
             const allHives = await this.loadHives();
             const targets = allHives.filter(h => hiveIds.includes(h.hiveId));
 
+            // مصفوفة لتخزين عمليات الرفع للسحابة لتنفيذها لاحقاً
+            const cloudPromises = [];
+
             for (const hive of targets) {
                 const newRecord = { ...hive };
-                delete newRecord.recordId; // حذف المعرف القديم
+                delete newRecord.recordId; 
                 newRecord.date = new Date().toISOString();
                 
                 if (framesChange !== 0) newRecord.frames = Math.max(1, newRecord.frames + framesChange);
@@ -1918,16 +1929,23 @@ window.togglePassword = function(inputId, icon) {
 
                 newRecord.notes = noteText;
                 
-                // حفظ محلي + رفع سحابي
+                // حفظ محلي (ننتظره لأنه سريع)
                 const newId = await DBHelper.add("hives", newRecord);
                 newRecord.recordId = newId;
 
-                if (FirebaseHelper.currentUser) {
-                    await FirebaseHelper.saveItem("hives", newId, newRecord);
+                // نجهز الرفع للسحابة لكن لا ننتظره هنا
+                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                    cloudPromises.push(FirebaseHelper.saveItem("hives", newId, newRecord));
                 }
             }
             
+            // تحديث الواجهة فوراً بعد انتهاء الحفظ المحلي
             this.refreshUI();
+            
+            // تنفيذ عمليات السحابة في الخلفية
+            if (cloudPromises.length > 0) {
+                Promise.all(cloudPromises).catch(err => console.log("Background sync queued"));
+            }
         };
 
         // --- تعديل: دالة الحذف مع الحذف المباشر من السحابة ---
@@ -2067,17 +2085,22 @@ window.togglePassword = function(inputId, icon) {
             if (text) {
                 const taskData = { siteId: this.siteId, text: text };
                 
-                // حفظ محلي والحصول على المعرف
-                const newTaskId = await DBHelper.add("tasks", taskData);
-                taskData.id = newTaskId;
+                try {
+                    // حفظ محلي
+                    const newTaskId = await DBHelper.add("tasks", taskData);
+                    taskData.id = newTaskId;
 
-                // رفع سحابي مباشر
-                if (FirebaseHelper.currentUser) {
-                    await FirebaseHelper.saveItem("tasks", newTaskId, taskData);
+                    // تحديث الواجهة فوراً
+                    input.value = "";
+                    this.displayTasks(); // تحديث القائمة فوراً
+                    
+                    // رفع سحابي في الخلفية (بدون await)
+                    if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                        FirebaseHelper.saveItem("tasks", newTaskId, taskData).catch(e => console.log("Sync pending"));
+                    }
+                } catch (e) {
+                    showNotification("خطأ في إضافة المهمة", "error");
                 }
-                
-                input.value = "";
-                this.displayTasks();
             }
         };
 
@@ -2427,60 +2450,75 @@ window.togglePassword = function(inputId, icon) {
     }
 
     function deleteSite(id, name) {
-        showModal({
-            title: `تأكيد حذف الموقع: ${name}`,
-            message: `للتأكيد، الرجاء كتابة اسم الموقع "${name}" في الحقل أدناه. سيتم حذف جميع بياناته بشكل نهائي.`,
-            customHTML: '<input type="text" id="delete-confirm-input" placeholder="اكتب اسم الموقع هنا" style="margin-top:10px;">',
-            confirmText: "حذف نهائي",
-            onConfirm: async () => {
-                if (getElement("delete-confirm-input").value !== name) {
-                    return showNotification("الاسم الذي أدخلته غير مطابق!", "error");
-                }
-
-                // --- التعامل مع السحابة: حذف البيانات المرتبطة أولاً ---
-                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                    showNotification("جاري الحذف من السحابة...", "info");
-                    
-                    try {
-                        // 1. جلب البيانات المرتبطة لحذفها من السحابة
-                        const associatedHives = await DBHelper.getAll("hives", "siteId", id);
-                        const associatedTasks = await DBHelper.getAll("tasks", "siteId", id);
-
-                        // 2. حذف الخلايا من السحابة
-                        for (const hive of associatedHives) {
-                            if (hive.recordId) await FirebaseHelper.deleteItem("hives", hive.recordId);
-                        }
-
-                        // 3. حذف المهام من السحابة
-                        for (const task of associatedTasks) {
-                            if (task.id) await FirebaseHelper.deleteItem("tasks", task.id);
-                        }
-
-                        // 4. حذف الموقع نفسه من السحابة
-                        await FirebaseHelper.deleteItem("sites", id);
-                    } catch (e) {
-                        console.error("خطأ في الحذف السحابي:", e);
-                    }
-                }
-                // --- نهاية التعامل مع السحابة ---
-
-                // الحذف المحلي
-                await DBHelper.delete("sites", id);
-                await DBHelper.deleteByIndex("hives", "siteId", id);
-                await DBHelper.deleteByIndex("tasks", "siteId", id);
-                managers.delete(id);
-                
-                showNotification(`تم حذف الموقع "${name}" بشكل نهائي.`, "info");
-                hideModal();
-                
-                sites = sites.filter(s => s.id !== id);
-                if (activeSiteId === id) {
-                    sites.length > 0 ? openSite(sites[0].id) : addSite();
-                }
-                createSiteButtons();
+    showModal({
+        title: `تأكيد حذف الموقع: ${name}`,
+        message: `للتأكيد، الرجاء كتابة اسم الموقع "${name}" في الحقل أدناه. سيتم حذف جميع بياناته بشكل نهائي.`,
+        customHTML: '<input type="text" id="delete-confirm-input" placeholder="اكتب اسم الموقع هنا" style="margin-top:10px;">',
+        confirmText: "حذف نهائي",
+        onConfirm: async () => {
+            if (getElement("delete-confirm-input").value !== name) {
+                return showNotification("الاسم الذي أدخلته غير مطابق!", "error");
             }
-        });
-    }
+
+            const btn = getElement("modal-confirm-btn");
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحذف...';
+            btn.disabled = true;
+
+            try {
+                // 1. التعامل مع السحابة بنظام الحزمة (Batch)
+                if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                    const userId = FirebaseHelper.currentUser.uid;
+                    const batch = db.batch(); // إنشاء حزمة جديدة
+                    
+                    // جمع بيانات الخلايا للحذف
+                    const associatedHives = await DBHelper.getAll("hives", "siteId", id);
+                    associatedHives.forEach(hive => {
+                        if (hive.recordId) {
+                            const ref = db.collection("users").doc(userId).collection("hives").doc(String(hive.recordId));
+                            batch.delete(ref);
+                        }
+                    });
+
+                    // جمع بيانات المهام للحذف
+                    const associatedTasks = await DBHelper.getAll("tasks", "siteId", id);
+                    associatedTasks.forEach(task => {
+                        if (task.id) {
+                            const ref = db.collection("users").doc(userId).collection("tasks").doc(String(task.id));
+                            batch.delete(ref);
+                        }
+                    });
+
+                    // حذف الموقع نفسه
+                    const siteRef = db.collection("users").doc(userId).collection("sites").doc(String(id));
+                    batch.delete(siteRef);
+
+                    // تنفيذ الحزمة (حتى لو لم يكن هناك نت، سيتم تسجيلها كعملية واحدة)
+                    // هذا يخبر Firebase SDK فوراً أن هذه البيانات محذوفة
+                    await batch.commit();
+                    console.log("تم تسجيل الحذف السحابي (Batch)");
+                }
+            } catch (e) {
+                console.error("خطأ في الحذف السحابي:", e);
+                // لن نوقف العملية، سنكمل الحذف المحلي
+            }
+
+            // 2. الحذف المحلي (IndexedDB)
+            await DBHelper.delete("sites", id);
+            await DBHelper.deleteByIndex("hives", "siteId", id);
+            await DBHelper.deleteByIndex("tasks", "siteId", id);
+            managers.delete(id);
+            
+            showNotification(`تم حذف الموقع "${name}" بشكل نهائي.`, "info");
+            hideModal();
+            
+            sites = sites.filter(s => s.id !== id);
+            if (activeSiteId === id) {
+                sites.length > 0 ? openSite(sites[0].id) : addSite();
+            }
+            createSiteButtons();
+        }
+    });
+}
 
     async function addSite() {
         const id = "site_" + Date.now();
