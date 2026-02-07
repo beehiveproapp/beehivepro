@@ -1866,7 +1866,7 @@ window.togglePassword = function(inputId, icon) {
 
         this.loadTasks = () => DBHelper.getAll("tasks", "siteId", this.siteId);
 
-        // --- تعديل: دالة الحفظ مع الرفع المباشر ---
+        // --- تعديل: دالة الحفظ مع تقديم الإشعار لضمان السرعة بدون نت ---
         this.saveHive = async () => {
             const id = parseInt(getElement("hive-id").value);
             const frames = parseInt(getElement("frames").value);
@@ -1885,18 +1885,20 @@ window.togglePassword = function(inputId, icon) {
                 pollenFrames: parseInt(getElement("pollen-frames").value) || 0
             };
 
-            // 1. الحفظ محلياً والحصول على المعرف
+            // 1. الحفظ محلياً والحصول على المعرف (سريع جداً)
             const newRecordId = await DBHelper.add("hives", record);
             record.recordId = newRecordId;
             
-            // 2. الرفع المباشر للسحابة
-            if (FirebaseHelper.currentUser) {
-                await FirebaseHelper.saveItem("hives", newRecordId, record);
-            }
-            
+            // 2. تحديث الواجهة وإظهار الإشعار فوراً (لن ينتظر الإنترنت)
             this.refreshUI();
             this.clearInputs();
             showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
+
+            // 3. الرفع المباشر للسحابة (يتم في الخلفية)
+            // قمنا بإزالة await هنا لكي لا يتوقف التطبيق في حال انقطاع النت
+            if (FirebaseHelper.currentUser) {
+                FirebaseHelper.saveItem("hives", newRecordId, record).catch(err => console.log("سيتم المزامنة عند توفر الإنترنت"));
+            }
         };
 
         // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر ---
