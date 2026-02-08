@@ -571,7 +571,7 @@
                         <div class="form-grid">
                             <div><label for="queen-status">حالة الملكة:</label><select id="queen-status"><option value="ملكة">بها ملكة</option><option value="بدون ملكة">بدون ملكة</option><option value="مكذبة">مكذبة</option></select></div>
                             <div><label for="queen-year">سنة الملكة:</label><input type="number" id="queen-year" placeholder="2024" min="2020"></div>
-                            <div><label for="queen-marked">هل الملكة معلمة؟</label><select id="queen-marked"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
+                            <div><label for="queen-marked">هل الملكة معلمة؟</label><select id="queen-marked"><option value="لا">لا</option><option value="لا">لا</option></select></div>
                         </div>
                     </div>
                     <div id="storage-info-form" class="form-tab-content">
@@ -1552,13 +1552,18 @@ window.togglePassword = function(inputId, icon) {
                 title: "تطبيق إجراء جماعي",
                 message: `سيتم تطبيق هذا الإجراء على ${selectedHives.length} خلية محددة. هل أنت متأكد؟`,
                 onConfirm: async () => {
-                    await activeManager.applyBulkAction(selectedHives, framesChange, noteText, stockType, stockChange);
-                    showNotification(`تم تطبيق الإجراء على ${selectedHives.length} خلية.`, "success");
-                    activeManager.refreshUI();
+                    // إخفاء النافذة أولاً لعدم تأخير المستخدم
                     hideModal();
+                    
+                    // استدعاء الدالة (التي تم تسريعها سابقاً)
+                    await activeManager.applyBulkAction(selectedHives, framesChange, noteText, stockType, stockChange);
+                    
+                    showNotification(`تم تطبيق الإجراء على ${selectedHives.length} خلية.`, "success");
+                    // التحديث قد تم بالفعل داخل applyBulkAction
                 }
             });
         } else {
+            // الإجراء الفردي (تعديل المدخلات فقط - لا يحتاج لتسريع لأنه لا يتصل بالنت أصلاً)
             const notesEl = getElement("notes");
             if (framesChange !== 0) changeValue("frames", framesChange);
             
@@ -1569,7 +1574,9 @@ window.togglePassword = function(inputId, icon) {
 
             notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
         }
-        toggleQuickActionsMenu();
+        // إغلاق القائمة فوراً
+        const menu = getElement("quick-actions-menu");
+        if(menu) menu.style.display = "none";
     }
     async function addReviewTask(action, taskFramesChange) {
         const hiveId = getElement("hive-id").value;
@@ -1580,44 +1587,38 @@ window.togglePassword = function(inputId, icon) {
         const activeManager = beehiveManager.getActive();
         const taskText = `📍 مراجعة الخلية رقم ${hiveNum}: تحتاج ${action}`;
         
-        // البيانات المطلوب حفظها
         const taskData = { 
             siteId: activeManager.siteId, 
             text: taskText,
-            createdAt: new Date().toISOString() // إضافة توقيت لضمان التزامن المرتب
+            createdAt: new Date().toISOString()
         };
 
         try {
-            // 1. الحفظ في قاعدة البيانات المحلية والحصول على معرف (ID)
+            // 1. الحفظ المحلي فوراً
             const id = await DBHelper.add("tasks", taskData);
-            taskData.id = id; // ضروري جداً لـ Firebase
+            taskData.id = id;
 
-            // 2. التزامن مع Firebase (هذا هو الجزء الذي كان ناقصاً في كودك)
-            if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
-                await FirebaseHelper.saveItem("tasks", id, taskData);
-            }
-
-            // 3. تحديث العرض في التطبيق
+            // 2. تحديث الواجهة والإشعار فوراً (الأولوية للمستخدم)
             activeManager.displayTasks();
-            
             showNotification(`تم تسجيل المهمة: الخلية رقم ${hiveNum} تحتاج ${action}.`, "info");
 
-            // تحديث حقل الملاحظات تلقائياً
             const notesEl = getElement("notes");
             const additionalNote = `[تم تعليمها للمراجعة: ${action}]`;
             notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${additionalNote}` : additionalNote;
             
-            // إذا كان الإجراء يتطلب تغيير عدد الإطارات (مثل شمع الأساس)
             if (taskFramesChange !== 0) {
                 changeValue("frames", taskFramesChange);
             }
-
-            // إغلاق قائمة الإجراءات السريعة
             toggleQuickActionsMenu();
+
+            // 3. المزامنة السحابية في الخلفية (بدون await لتعطيل الواجهة)
+            if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                FirebaseHelper.saveItem("tasks", id, taskData).catch(e => console.log("تأجل الرفع للسحابة"));
+            }
             
         } catch (error) {
-            console.error("خطأ في مزامنة المهمة السريعة:", error);
-            showNotification("تم الحفظ محلياً فقط، فشل التزامن مع السحابة", "warning");
+            console.error("خطأ:", error);
+            showNotification("حدث خطأ في الحفظ", "error");
         }
     }
 
@@ -1866,7 +1867,7 @@ window.togglePassword = function(inputId, icon) {
 
         this.loadTasks = () => DBHelper.getAll("tasks", "siteId", this.siteId);
 
-        // --- تعديل: دالة الحفظ مع تقديم الإشعار لضمان السرعة بدون نت ---
+        // --- تعديل: دالة الحفظ مع الرفع المباشر ---
         this.saveHive = async () => {
             const id = parseInt(getElement("hive-id").value);
             const frames = parseInt(getElement("frames").value);
@@ -1885,19 +1886,18 @@ window.togglePassword = function(inputId, icon) {
                 pollenFrames: parseInt(getElement("pollen-frames").value) || 0
             };
 
-            // 1. الحفظ محلياً والحصول على المعرف (سريع جداً)
+            // 1. الحفظ محلياً
             const newRecordId = await DBHelper.add("hives", record);
             record.recordId = newRecordId;
             
-            // 2. تحديث الواجهة وإظهار الإشعار فوراً (لن ينتظر الإنترنت)
+            // 2. تحديث الشاشة والإشعار فوراً (قبل السحابة)
             this.refreshUI();
             this.clearInputs();
             showNotification(`تم حفظ فحص الخلية رقم ${id} بنجاح.`, "success");
-
-            // 3. الرفع المباشر للسحابة (يتم في الخلفية)
-            // قمنا بإزالة await هنا لكي لا يتوقف التطبيق في حال انقطاع النت
+            
+            // 3. الرفع للسحابة في الخلفية
             if (FirebaseHelper.currentUser) {
-                FirebaseHelper.saveItem("hives", newRecordId, record).catch(err => console.log("سيتم المزامنة عند توفر الإنترنت"));
+                FirebaseHelper.saveItem("hives", newRecordId, record).catch(e => console.log("سيتم الرفع لاحقاً"));
             }
         };
 
@@ -1905,10 +1905,14 @@ window.togglePassword = function(inputId, icon) {
         this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
             const allHives = await this.loadHives();
             const targets = allHives.filter(h => hiveIds.includes(h.hiveId));
+            
+            // مصفوفة لتخزين العناصر التي يجب رفعها للسحابة لاحقاً
+            const itemsToSync = [];
 
+            // الحفظ المحلي أولاً للكل
             for (const hive of targets) {
                 const newRecord = { ...hive };
-                delete newRecord.recordId; // حذف المعرف القديم
+                delete newRecord.recordId;
                 newRecord.date = new Date().toISOString();
                 
                 if (framesChange !== 0) newRecord.frames = Math.max(1, newRecord.frames + framesChange);
@@ -1920,16 +1924,21 @@ window.togglePassword = function(inputId, icon) {
 
                 newRecord.notes = noteText;
                 
-                // حفظ محلي + رفع سحابي
+                // حفظ محلي
                 const newId = await DBHelper.add("hives", newRecord);
                 newRecord.recordId = newId;
-
-                if (FirebaseHelper.currentUser) {
-                    await FirebaseHelper.saveItem("hives", newId, newRecord);
-                }
+                itemsToSync.push(newRecord); // تجهيز للمزامنة
             }
             
+            // تحديث الواجهة فوراً
             this.refreshUI();
+
+            // المزامنة السحابية في الخلفية (خارج حلقة الانتظار الرئيسية)
+            if (FirebaseHelper.currentUser) {
+                itemsToSync.forEach(item => {
+                    FirebaseHelper.saveItem("hives", item.recordId, item).catch(e => console.log("sync pending"));
+                });
+            }
         };
 
         // --- تعديل: دالة الحذف مع الحذف المباشر من السحابة ---
@@ -1938,22 +1947,31 @@ window.togglePassword = function(inputId, icon) {
                 title: "تأكيد الحذف",
                 message: `هل أنت متأكد من حذف الخلية رقم ${id} وجميع سجلاتها؟`,
                 onConfirm: async () => {
-                    // جلب السجلات للحذف السحابي
+                    // 1. جلب البيانات محلياً بسرعة (نحتاج المعرفات للحذف السحابي لاحقاً)
                     const hivesToDelete = await DBHelper.getAll("hives", "siteAndHive", IDBKeyRange.only([this.siteId, id]));
 
-                    // الحذف المحلي
+                    // 2. الحذف المحلي فوراً
                     await DBHelper.deleteByIndex("hives", "siteAndHive", IDBKeyRange.only([this.siteId, id]));
                     
-                    // الحذف السحابي لكل سجل
-                    if (FirebaseHelper.currentUser) {
-                        for (const h of hivesToDelete) {
-                            if (h.recordId) await FirebaseHelper.deleteItem("hives", h.recordId);
-                        }
-                    }
-                    
+                    // 3. تحديث الشاشة وإغلاق النافذة فوراً (سلاسة تامة)
                     this.refreshUI();
                     showNotification(`تم حذف الخلية رقم ${id}.`, "info");
                     hideModal();
+
+                    // 4. الحذف من السحابة في الخلفية (بدون await)
+                    if (FirebaseHelper.currentUser) {
+                        // نقوم بإنشاء دالة غير متزامنة لتعمل في الخلفية
+                        (async () => {
+                            try {
+                                for (const h of hivesToDelete) {
+                                    if (h.recordId) await FirebaseHelper.deleteItem("hives", h.recordId);
+                                }
+                                console.log("تمت مراجعة الحذف السحابي في الخلفية");
+                            } catch (e) {
+                                console.log("سيتم الحذف السحابي عند توفر الاتصال");
+                            }
+                        })();
+                    }
                 }
             });
         };
@@ -2069,30 +2087,33 @@ window.togglePassword = function(inputId, icon) {
             if (text) {
                 const taskData = { siteId: this.siteId, text: text };
                 
-                // حفظ محلي والحصول على المعرف
+                // حفظ محلي
                 const newTaskId = await DBHelper.add("tasks", taskData);
                 taskData.id = newTaskId;
 
-                // رفع سحابي مباشر
-                if (FirebaseHelper.currentUser) {
-                    await FirebaseHelper.saveItem("tasks", newTaskId, taskData);
-                }
-                
+                // تحديث الواجهة فوراً
                 input.value = "";
                 this.displayTasks();
+
+                // رفع سحابي في الخلفية
+                if (FirebaseHelper.currentUser) {
+                    FirebaseHelper.saveItem("tasks", newTaskId, taskData).catch(e => console.log("sync pending"));
+                }
             }
         };
 
         // --- تعديل: حذف مهمة مع الحذف المباشر ---
         this.deleteTask = async function (id) {
+            // 1. الحذف المحلي فوراً
             await DBHelper.delete("tasks", id);
             
-            // حذف سحابي مباشر
-            if (FirebaseHelper.currentUser) {
-                await FirebaseHelper.deleteItem("tasks", id);
-            }
-            
+            // 2. تحديث القائمة فوراً
             this.displayTasks();
+            
+            // 3. الحذف من السحابة في الخلفية
+            if (FirebaseHelper.currentUser) {
+                FirebaseHelper.deleteItem("tasks", id).catch(e => console.log("تأجل الحذف السحابي"));
+            }
         };
 
         this.clearInputs = () => {
