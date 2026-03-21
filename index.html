@@ -485,6 +485,20 @@ body.dark-mode {
 .form-tab-content.active:not(.slide-left):not(.slide-right) {
     animation: fadeIn 0.3s ease-out forwards;
 }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    direction: rtl;
+    display: flex;
+    min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
+    
+    /* هذا هو السطر الوحيد الذي تحتاجه لإيقاف السحب للتحديث */
+    overscroll-behavior-y: none; 
+}
     </style>
 </head>
 <body>
