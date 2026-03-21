@@ -361,19 +361,56 @@ body.dark-mode {
 
         @media (max-width: 768px) {
             .main-content-wrapper { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 5px 10px; overflow-x: auto; }
-            .sidebar.collapsed { width: 100%; }
-            .sidebar-header, .sidebar-footer { display: none; }
-            .sidebar-main { display: flex; flex-shrink: 0; }
-            .menu-toggle-btn { display: block; }
             .content-area { padding: 10px; }
-            .container { padding: 15px; min-height: calc(100vh - 80px); }
             h1 { font-size: 1.5rem; }
             .dashboard-grid { grid-template-columns: 1fr 1fr; }
             .kpi-value { font-size: 28px; }
-            .tab-button { padding: 8px 10px; font-size: 14px; }
             .hive-list-controls { flex-direction: column; align-items: stretch; }
             .auth-buttons { flex-direction: column; }
+
+            /* -- التعديلات الجديدة للموبايل -- */
+            .main-tabs { display: none !important; } /* إخفاء التبويبات العلوية */
+            .container { padding-bottom: 70px !important; min-height: 100vh; } 
+            
+            /* تصميم الشريط السفلي */
+            .bottom-nav-bar {
+                display: flex; position: fixed; bottom: 0; left: 0; width: 100%;
+                background-color: var(--content-bg-color); border-top: 1px solid var(--border-color);
+                box-shadow: 0 -4px 15px var(--shadow-color); z-index: 2000; justify-content: space-around;
+                padding: 8px 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); 
+            }
+            .bottom-nav-btn {
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                background: none; border: none; color: #7f8c8d; font-size: 11px; gap: 4px;
+                padding: 5px; cursor: pointer; flex: 1; transition: all 0.2s;
+            }
+            .bottom-nav-btn i { font-size: 20px; }
+            .bottom-nav-btn.active { color: var(--header-color); transform: translateY(-2px); font-weight: bold; }
+            
+            /* تحويل القائمة الجانبية لدرج منزلق (Drawer) */
+            .sidebar {
+                position: fixed; top: 0; right: -100%; height: 100vh; width: 260px;
+                z-index: 3000; flex-direction: column; transition: right 0.3s ease;
+                box-shadow: -5px 0 15px rgba(0,0,0,0.5); display: flex;
+            }
+            .sidebar.open { right: 0; }
+            .menu-toggle-btn { display: none; }
+            .sidebar-header, .sidebar-footer { display: block; }
+            .sidebar-main { display: block; overflow-y: auto; }
+            
+            /* خلفية التعتيم للقائمة الجانبية */
+            .sidebar-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.6); z-index: 2999; display: none; opacity: 0;
+                transition: opacity 0.3s;
+            }
+            .sidebar-overlay.active { display: block; opacity: 1; }
+        }
+
+        /* إخفاء إضافات الموبايل في شاشات الكمبيوتر */
+        @media (min-width: 769px) {
+            .bottom-nav-bar { display: none !important; }
+            .sidebar-overlay { display: none !important; }
         }
         @media (max-width: 480px) {
              .dashboard-grid { grid-template-columns: 1fr; }
@@ -404,6 +441,49 @@ body.dark-mode {
 }
 .password-toggle-icon:hover {
     color: var(--header-alt-color);
+}
+
+/* ==========================================
+   تأثيرات السحب والانزلاق للتبويبات
+   ========================================== */
+/* تأثيرات السحب المعكوسة */
+@keyframes slideInFromLeftRTL {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromRightRTL {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.tab-content.active.slide-left {
+    animation: slideInFromLeftRTL 0.3s ease-out;
+}
+.tab-content.active.slide-right {
+    animation: slideInFromRightRTL 0.3s ease-out;
+}
+
+/* في حال النقر العادي على الأزرار (بدون سحب) يظهر بتأثير تلاشي ناعم */
+.tab-content.active:not(.slide-left):not(.slide-right) {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 1. رفع الإشعارات في شاشات الموبايل لتتجاوز الشريط السفلي */
+@media (max-width: 768px) {
+    #notification-container {
+        bottom: 80px !important; /* مسافة تكفي لتجاوز شريط التنقل السفلي */
+    }
+}
+
+/* 2. تفعيل تأثيرات الانزلاق (Slide) لتبويبات نموذج الخلية الفرعية */
+.form-tab-content.active.slide-left {
+    animation: slideInFromLeftRTL 0.3s ease-out;
+}
+.form-tab-content.active.slide-right {
+    animation: slideInFromRightRTL 0.3s ease-out;
+}
+.form-tab-content.active:not(.slide-left):not(.slide-right) {
+    animation: fadeIn 0.3s ease-out forwards;
 }
     </style>
 </head>
@@ -479,7 +559,30 @@ body.dark-mode {
                  <i class="fas fa-sign-out-alt"></i> <span class="sidebar-text">خروج</span>
              </button>
         </div>
-    </div>
+    </div> <div id="mobile-sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+    <nav id="bottom-nav" class="bottom-nav-bar">
+        <button class="bottom-nav-btn active" onclick="switchMobileTab('dashboard-tab', this)">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>الرئيسية</span>
+        </button>
+        <button class="bottom-nav-btn" onclick="switchMobileTab('hives-tab', this)">
+            <i class="fas fa-edit"></i>
+            <span>الخلايا</span>
+        </button>
+        <button class="bottom-nav-btn star-feature" onclick="switchMobileTab('stars-tab', this)">
+            <i class="fas fa-star"></i>
+            <span>النجوم</span>
+        </button>
+        <button class="bottom-nav-btn" onclick="switchMobileTab('analysis-tab', this)">
+            <i class="fas fa-chart-line"></i>
+            <span>التحليل</span>
+        </button>
+        <button class="bottom-nav-btn" onclick="toggleMobileSidebar()">
+            <i class="fas fa-bars"></i>
+            <span>المزيد</span>
+        </button>
+    </nav>
     
     <div class="content-area">
         <div class="container">
@@ -2776,6 +2879,35 @@ window.togglePassword = function(inputId, icon) {
         });
     }
 
+    // دالة تبديل التبويبات من الشريط السفلي للموبايل
+    function switchMobileTab(tabId, btnElement) {
+        // 1. تغيير التبويب في النظام الأساسي
+        if (beehiveManager.getActive()) {
+            beehiveManager.getActive().showMainTab(tabId);
+        }
+
+        // 2. تحديث الشكل النشط للأزرار السفلية
+        document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
+        if (btnElement) btnElement.classList.add('active');
+
+        // 3. إغلاق القائمة الجانبية إذا كانت مفتوحة (لتسهيل الرؤية)
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+    }
+
+    // دالة فتح/إغلاق القائمة الجانبية من زر "المزيد"
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+        
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+
     // ربط الدوال لكي تعمل في الصفحة
     Object.assign(window, {
         toggleSidebar: () => getElement("main-sidebar").classList.toggle("collapsed"),
@@ -2817,7 +2949,9 @@ window.togglePassword = function(inputId, icon) {
         confirmSignOut, // <--- هذه هي الإضافة المهمة هنا
         toggleTheme,
         toggleStarsFeature,
-        toggleRecsFeature
+        toggleRecsFeature,
+switchMobileTab,
+toggleMobileSidebar
     });
 
     // إغلاق القوائم المنبثقة عند النقر خارجها
@@ -2834,6 +2968,184 @@ window.togglePassword = function(inputId, icon) {
             hideFirebaseAuthModal();
         }
     });
+
+    // ==========================================
+    // دعم إيماءات السحب (Swipe Gestures) للموبايل
+    // ==========================================
+    (function initSwipeNavigation() {
+        // الترتيب المنطقي للتبويبات كما تظهر في الشريط السفلي
+        const tabOrder = ['dashboard-tab', 'hives-tab', 'stars-tab', 'analysis-tab', 'settings-tab'];
+        
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let touchStartY = 0;
+        let touchEndY = 0;
+        const swipeThreshold = 60; // الحد الأدنى للمسافة لاحتساب السحب (بالبكسل)
+        
+        const swipeContainer = document.getElementById('standard-view-wrapper');
+        if (!swipeContainer) return;
+
+        swipeContainer.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        swipeContainer.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(e);
+        }, { passive: true });
+
+        function handleSwipe(event) {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                
+                if (event.target.closest('.table-wrapper') || event.target.closest('.main-tabs')) {
+                    return; 
+                }
+
+                const activeTab = document.querySelector('.tab-content.active');
+                if (!activeTab) return;
+                
+                let currentIndex = tabOrder.indexOf(activeTab.id);
+                if (currentIndex === -1) return;
+
+                let nextIndex = currentIndex;
+                let directionClass = ""; 
+
+                // --- المنطق المعكوس هنا ---
+                if (deltaX > 0) { 
+                    // سحب لليمين بإصبعك -> يظهر التبويب التالي (القادم من اليسار)
+                    nextIndex++; 
+                    directionClass = "slide-left";
+                } else { 
+                    // سحب لليسار بإصبعك -> يظهر التبويب السابق (القادم من اليمين)
+                    nextIndex--; 
+                    directionClass = "slide-right";
+                }
+
+                while (nextIndex >= 0 && nextIndex < tabOrder.length) {
+                    const nextTabId = tabOrder[nextIndex];
+                    let nextTabBtn = window.innerWidth <= 768 ? 
+                        document.querySelector(`.bottom-nav-btn[onclick*="${nextTabId}"]`) : 
+                        document.querySelector(`.tab-button[onclick*="${nextTabId}"]`);
+                    
+                    if (nextTabBtn && !nextTabBtn.classList.contains('feature-hidden')) {
+                        
+                        document.querySelectorAll('.tab-content').forEach(tab => {
+                            tab.classList.remove('slide-left', 'slide-right');
+                        });
+
+                        if (window.innerWidth <= 768) {
+                            switchMobileTab(nextTabId, nextTabBtn);
+                        } else {
+                            if (beehiveManager.getActive()) beehiveManager.getActive().showMainTab(nextTabId);
+                        }
+
+                        const targetTabEl = document.getElementById(nextTabId);
+                        if (targetTabEl) {
+                            void targetTabEl.offsetWidth; 
+                            targetTabEl.classList.add(directionClass);
+                        }
+                        
+                        break; 
+                    }
+                    // الاستمرار في نفس الاتجاه الجديد عند البحث
+                    deltaX > 0 ? nextIndex++ : nextIndex--;
+                }
+            }
+        }
+    })();
+
+    // ==========================================
+    // دعم السحب (Swipe) لتبويبات إدخال بيانات الخلية (الفرعية)
+    // ==========================================
+    (function initFormSwipe() {
+        // ترتيب التبويبات الفرعية
+        const formTabs = ['main-info', 'queen-info', 'storage-info'];
+        let startX = 0, startY = 0, endX = 0, endY = 0;
+        const threshold = 40; // حساسية السحب (بالبكسل)
+
+        // استهداف حاويات النماذج الثلاثة
+        const formSections = ['main-info-form', 'queen-info-form', 'storage-info-form'];
+
+        formSections.forEach(sectionId => {
+            const el = document.getElementById(sectionId);
+            if (!el) return;
+
+            el.addEventListener('touchstart', e => {
+                startX = e.changedTouches[0].screenX;
+                startY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            el.addEventListener('touchend', e => {
+                endX = e.changedTouches[0].screenX;
+                endY = e.changedTouches[0].screenY;
+
+                const deltaX = endX - startX;
+                const deltaY = endY - startY;
+
+                // التحقق من أن السحب أفقي وليس عمودياً (للتمرير)
+                if (Math.abs(deltaX) > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                    
+                    // إيقاف الحدث هنا لمنع الشاشة الرئيسية من السحب مع التبويب الفرعي
+                    e.stopPropagation();
+
+                    // معرفة التبويب النشط حالياً
+                    const activeTabBtn = document.querySelector('.form-tab-button.active');
+                    if (!activeTabBtn) return;
+
+                    // استخراج اسم التبويب من زر onclick
+                    const currentTargetMatch = activeTabBtn.getAttribute('onclick').match(/'([^']+)'/);
+                    if (!currentTargetMatch) return;
+                    
+                    const currentIdText = currentTargetMatch[1];
+                    let currentIndex = formTabs.indexOf(currentIdText);
+
+                    if (currentIndex === -1) return;
+
+                    let nextIndex = currentIndex;
+                    let directionClass = "";
+
+                    // منطق الاتجاه المعكوس (RTL)
+                    if (deltaX > 0) {
+                        // السحب لليمين بإصبعك -> الانتقال للتبويب التالي (يأتي من اليسار)
+                        nextIndex++;
+                        directionClass = "slide-left";
+                    } else {
+                        // السحب لليسار بإصبعك -> الانتقال للتبويب السابق (يأتي من اليمين)
+                        nextIndex--;
+                        directionClass = "slide-right";
+                    }
+
+                    // إذا كان التبويب المستهدف موجوداً
+                    if (nextIndex >= 0 && nextIndex < formTabs.length) {
+                        const nextTabId = formTabs[nextIndex];
+                        const nextBtn = document.querySelector(`.form-tab-button[onclick*="${nextTabId}"]`);
+
+                        if (nextBtn) {
+                            // إزالة كلاسات الحركة القديمة
+                            document.querySelectorAll('.form-tab-content').forEach(tab => {
+                                tab.classList.remove('slide-left', 'slide-right');
+                            });
+
+                            // إضافة كلاس الحركة للتبويب المستهدف
+                            const targetForm = document.getElementById(`${nextTabId}-form`);
+                            if (targetForm) {
+                                void targetForm.offsetWidth; // Trigger DOM reflow لإعادة تشغيل الأنيميشن
+                                targetForm.classList.add(directionClass);
+                            }
+
+                            // تفعيل التبويب
+                            showFormTab(nextTabId, nextBtn);
+                        }
+                    }
+                }
+            });
+        });
+    })();
 
     // نقطة الدخول الرئيسية
     window.onload = async function () {
@@ -2886,6 +3198,22 @@ window.togglePassword = function(inputId, icon) {
                 });
         });
     }
+    // إغلاق القائمة الجانبية في الجوال تلقائياً عند الضغط على زر ينقل لصفحة جديدة
+    window.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener('click', function(e) {
+            // التحقق مما إذا كان العنصر المضغوط هو زر القائمة النهائية
+            const isMenuButton = e.target.closest('.menu-button') || e.target.closest('.site-button');
+            const isDropdownHeader = e.target.closest('.menu-group-header') || e.target.closest('.site-control-btn');
+            
+            // إذا كان زراً نهائياً وليس عنوان قائمة منسدلة، والشاشة بحجم الجوال
+            if (isMenuButton && !isDropdownHeader && window.innerWidth <= 768) {
+                const sidebar = document.getElementById('main-sidebar');
+                if (sidebar.classList.contains('open')) {
+                    toggleMobileSidebar(); // إغلاق القائمة
+                }
+            }
+        });
+    });
 </script>
 </body>
 </html>
