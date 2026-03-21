@@ -509,6 +509,73 @@ body {
     overflow-y: auto; /* هذا يسمح بالتمرير */
     -webkit-overflow-scrolling: touch; /* يجعل التمرير ناعماً في الآيفون */
 }
+
+/* ==========================================
+   تنسيقات الجولة التعريفية (Tutorial)
+   ========================================== */
+.tutorial-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9998; display: none;
+    transition: opacity 0.3s ease;
+}
+.tutorial-overlay.active { display: block; animation: fadeIn 0.3s; }
+
+/* العنصر المضاء */
+.tutorial-highlight {
+    position: relative !important;
+    z-index: 9999 !important;
+    box-shadow: 0 0 0 4px var(--header-alt-color), 0 0 20px rgba(255, 255, 255, 0.4) !important;
+    background-color: var(--content-bg-color) !important;
+    border-radius: 8px !important;
+    pointer-events: none; /* منع النقر أثناء الجولة */
+    animation: pulseHighlight 1.5s infinite;
+}
+
+@keyframes pulseHighlight {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* صندوق الحوار / الشرح */
+.tutorial-dialog {
+    position: fixed;
+    bottom: 15%; /* في الأسفل ليكون واضحاً */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 400px;
+    display: none; flex-direction: column; gap: 15px;
+    border: 2px solid var(--header-color);
+    text-align: right;
+}
+.tutorial-dialog.active { display: flex; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+@keyframes slideUp {
+    from { bottom: 0; opacity: 0; }
+    to { bottom: 15%; opacity: 1; }
+}
+
+.tutorial-dialog h3 { margin: 0; color: var(--header-color); display: flex; align-items: center; gap: 8px; font-size: 1.2em;}
+.tutorial-dialog p { margin: 0; font-size: 0.95em; line-height: 1.6; }
+.tutorial-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.tutorial-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+.tutorial-btn-next { background: var(--header-alt-color); color: white; }
+.tutorial-btn-next:hover { opacity: 0.9; transform: translateY(-2px);}
+.tutorial-btn-skip { background: transparent; color: #7f8c8d; text-decoration: underline; padding: 10px;}
+.tutorial-progress { font-size: 0.8em; color: #7f8c8d; }
+
+/* تعديل للموبايل لمنع تغطية الشريط السفلي */
+@media (max-width: 768px) {
+    .tutorial-dialog { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
     </style>
 </head>
 <body>
@@ -2132,41 +2199,66 @@ window.togglePassword = function(inputId, icon) {
             return `متوازن (${h}/${p})`;
         };
 
-        this.displayHives = async () => {
-            const tbody = getElement("hives-table-body");
-            let hives = await this.loadHives();
-            const filter = getElement("hive-filter-input").value.toLowerCase();
-            
-            if (filter) {
-                hives = hives.filter(h => String(h.hiveId).includes(filter) || (h.notes && h.notes.toLowerCase().includes(filter)));
-            }
+this.displayHives = async () => {
+    const tbody = getElement("hives-table-body");
+    let hives = await this.loadHives();
+    const filter = getElement("hive-filter-input").value.toLowerCase();
+    
+    if (filter) {
+        hives = hives.filter(h => String(h.hiveId).includes(filter) || (h.notes && h.notes.toLowerCase().includes(filter)));
+    }
 
-            this.sortHives(hives, this.sortState.column, this.sortState.direction);
+    this.sortHives(hives, this.sortState.column, this.sortState.direction);
 
-            const fragment = document.createDocumentFragment();
-            hives.forEach(hive => {
-                const score = this.calculateHealthScore(hive);
-                const hue = score * 0.01 * 120; // 0=red, 120=green
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td><input type="checkbox" class="hive-select-checkbox" data-hive-id="${hive.hiveId}"></td>
-                    <td>${hive.hiveId}</td>
-                    <td>${hive.frames}</td>
-                    <td><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
-                    <td>${hive.queenStatus} (سنة ${hive.queenYear || "?"})</td>
-                    <td>${this.getStockStatus(hive)}</td>
-                    <td><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
-                    <td class="actions-cell">
-                        <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
-                        <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
-                        <button style="background-color: var(--danger-color);" onclick="beehiveManager.getActive().deleteHive(${hive.hiveId})" title="حذف"><i class="fas fa-trash-alt"></i></button>
-                    </td>`;
-                fragment.appendChild(row);
-            });
-            tbody.innerHTML = "";
-            tbody.appendChild(fragment);
-            getElement("select-all-hives").checked = false;
-        };
+    const fragment = document.createDocumentFragment();
+    hives.forEach(hive => {
+        const score = this.calculateHealthScore(hive);
+        const hue = score * 0.01 * 120; // 0=red, 120=green
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td><input type="checkbox" class="hive-select-checkbox" data-hive-id="${hive.hiveId}"></td>
+            <td>${hive.hiveId}</td>
+            <td>${hive.frames}</td>
+            <td><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
+            <td>${hive.queenStatus} (سنة ${hive.queenYear || "?"})</td>
+            <td>${this.getStockStatus(hive)}</td>
+            <td><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
+            <td class="actions-cell">
+                <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
+                <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
+                <button style="background-color: var(--danger-color);" onclick="beehiveManager.getActive().deleteHive(${hive.hiveId})" title="حذف"><i class="fas fa-trash-alt"></i></button>
+            </td>`;
+        fragment.appendChild(row);
+    });
+    tbody.innerHTML = "";
+    tbody.appendChild(fragment);
+    getElement("select-all-hives").checked = false;
+
+    // ==========================================
+    // الكود الجديد: تحديث أيقونات الفرز في ترويسة الجدول
+    // ==========================================
+    const headers = document.querySelectorAll("th.sortable");
+    headers.forEach((th, index) => {
+        // إزالة الأيقونة القديمة إذا كانت موجودة
+        const oldIcon = th.querySelector('i');
+        if (oldIcon) oldIcon.remove();
+
+        // إنشاء أيقونة جديدة بناءً على حالة الفرز
+        const icon = document.createElement('i');
+        icon.style.marginRight = "8px"; // مسافة بين النص والأيقونة
+        
+        if (this.sortState.column === index) {
+            // العمود مفروز حالياً: إظهار سهم لأعلى أو لأسفل بلون بارز
+            icon.className = this.sortState.direction === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
+            icon.style.color = "var(--header-alt-color)";
+        } else {
+            // العمود غير مفروز: إظهار أيقونة فرز باهتة
+            icon.className = "fas fa-sort";
+            icon.style.opacity = "0.3";
+        }
+        th.appendChild(icon);
+    });
+};
 
         this.calculateDashboardStats = async function () {
             const hives = await this.loadHives();
