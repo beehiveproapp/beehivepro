@@ -20,34 +20,44 @@
 
     <style>
         /* CSS: تم الحفاظ على الأنماط الأصلية مع إضافة متغيرات الوضع الليلي */
-        :root {
-            --bg-color: #f0f2f5;
-            --content-bg-color: #ffffff;
-            --sidebar-bg-color: #2c3e50;
-            --sidebar-text-color: #ecf0f1;
-            --text-color: #34495e;
-            --header-color: #f39c12;
-            --header-alt-color: #3498db;
-            --border-color: #e0e0e0;
-            --shadow-color: rgba(0, 0, 0, 0.08);
-            --danger-color: #e74c3c;
-            --success-color: #2ecc71;
-            --warning-color: #f1c40f;
-            --info-color: #3498db;
-            --strong-hive-color: #27ae60;
-            --weak-hive-color: #c0392b;
-            --excess-color: #9b59b6;
-            --deficit-color: #e67e22;
-        }
-        body.dark-mode {
-            --bg-color: #1a202c;
-            --content-bg-color: #2d3748;
-            --sidebar-bg-color: #1c2a3a;
-            --sidebar-text-color: #a0aec0;
-            --text-color: #e2e8f0;
-            --border-color: #4a5568;
-            --shadow-color: rgba(0, 0, 0, 0.4);
-        }
+:root {
+    /* ألوان النمط الكهرماني الجديد */
+    --bg-color: #FFFBEB; /* بيج فاتح جداً مريح للعين في الشمس */
+    --content-bg-color: #FFFFFF;
+    --sidebar-bg-color: #451A03; /* بني داكن جداً يبرز اللون الكهرماني */
+    --sidebar-text-color: #FEF3C7;
+    --text-color: #451A03; /* بني داكن للقراءة الواضحة */
+    
+    --header-color: #D97706; /* لون العسل الداكن */
+    --header-alt-color: #F59E0B; /* لون العسل الفاتح للأزرار */
+    --border-color: #FDE68A; /* أصفر باهت للحدود */
+    --shadow-color: rgba(217, 119, 6, 0.1);
+    
+    /* ألوان الحالات (معدلة لتناسب السمة) */
+    --danger-color: #EF4444;
+    --success-color: #10B981;
+    --warning-color: #F59E0B;
+    --info-color: #3B82F6;
+    
+    --strong-hive-color: #059669;
+    --weak-hive-color: #DC2626;
+    --excess-color: #8B5CF6;
+    --deficit-color: #EA580C;
+}
+
+body.dark-mode {
+    --bg-color: #0F172A; /* أزرق ليلي عميق */
+    --content-bg-color: #1E293B;
+    --sidebar-bg-color: #020617;
+    --sidebar-text-color: #94A3B8;
+    --text-color: #F1F5F9;
+    --border-color: #334155;
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    
+    /* جعل ألوان العسل أكثر سطوعاً في الوضع الليلي */
+    --header-color: #FBBF24; 
+    --header-alt-color: #F59E0B;
+}
         *, *::before, *::after { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
