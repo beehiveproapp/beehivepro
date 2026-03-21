@@ -248,7 +248,7 @@ body.dark-mode {
 
         #firebase-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); z-index: 2000; display: none;
+            background: rgba(0,0,0,0.9); z-index: 4000; display: none;
             align-items: center; justify-content: center;
         }
         #firebase-box { 
@@ -575,6 +575,47 @@ body {
 /* تعديل للموبايل لمنع تغطية الشريط السفلي */
 @media (max-width: 768px) {
     .tutorial-dialog { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* تأثيرات Glassmorphism للبطاقات */
+.kpi-card, .chart-container, .todo-container, .star-season-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+}
+
+.kpi-card:hover, .chart-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(217, 119, 6, 0.15);
+}
+
+/* حركة دخول متدرجة لصفوف الجدول (Staggered Animation) */
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+tbody tr {
+    animation: slideUpFade 0.4s ease forwards;
+    opacity: 0;
+}
+
+tbody tr:nth-child(1) { animation-delay: 0.1s; }
+tbody tr:nth-child(2) { animation-delay: 0.2s; }
+tbody tr:nth-child(3) { animation-delay: 0.3s; }
+tbody tr:nth-child(4) { animation-delay: 0.4s; }
+/* ... وهكذا */
+
+/* تحسين شكل الأزرار */
+button {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    letter-spacing: 0.5px;
+}
+button:active {
+    transform: scale(0.95) !important;
 }
     </style>
 </head>
@@ -979,6 +1020,17 @@ body {
 </div>
 
 <div id="notification-container"></div>
+
+<div id="tutorial-overlay" class="tutorial-overlay"></div>
+<div id="tutorial-dialog" class="tutorial-dialog">
+    <h3><i class="fas fa-magic"></i> <span id="tutorial-title"></span></h3>
+    <p id="tutorial-text"></p>
+    <div class="tutorial-controls">
+        <button id="tutorial-skip" class="tutorial-btn-skip" onclick="endTutorial()">تخطي</button>
+        <span id="tutorial-progress" class="tutorial-progress"></span>
+        <button id="tutorial-next" class="tutorial-btn tutorial-btn-next" onclick="nextTutorialStep()">التالي <i class="fas fa-chevron-left"></i></button>
+    </div>
+</div>
 
 <script>
 (function () {
@@ -3067,7 +3119,10 @@ this.displayHives = async () => {
         toggleStarsFeature,
         toggleRecsFeature,
 switchMobileTab,
-toggleMobileSidebar
+toggleMobileSidebar,
+nextTutorialStep,
+endTutorial,
+startTutorial
     });
 
     // إغلاق القوائم المنبثقة عند النقر خارجها
@@ -3263,6 +3318,123 @@ toggleMobileSidebar
         });
     })();
 
+// ==========================================
+// نظام الجولة التعريفية (Onboarding Tutorial)
+// ==========================================
+let currentTutorialStep = 0;
+let tutorialSteps = [];
+
+function initTutorialSteps() {
+    const isMobile = window.innerWidth <= 768;
+    
+    tutorialSteps = [
+        {
+            target: null, 
+            title: "أهلاً بك في عالمك الخاص 🍯",
+            text: "تربية النحل ليست مجرد مهنة، بل شغف يرافقه الكثير من التعب. صممنا هذا المساعد الذكي ليحمل عنك عبء الحسابات والتذكر، ويترك لك متعة العمل الصافي مع النحل. دعنا نكتشف كيف سنجعل يومك في المنحل أسهل!"
+        },
+        {
+            target: isMobile ? document.querySelector('.bottom-nav-btn i.fa-tachometer-alt')?.parentElement : document.querySelector('.tab-button i.fa-tachometer-alt')?.parentElement,
+            title: "نبض منحلك في مكان واحد 📊",
+            text: "تخيل أن تطمئن على صحة كل خلاياك بنظرة واحدة! هنا ستجد ملخصاً ذكياً يخبرك فوراً أين يجب أن تركز جهدك اليوم، وتوصيات آلية تنبهك بالخلايا التي تحتاج لتدخلك العاجل لإنقاذها."
+        },
+        {
+            target: isMobile ? document.querySelector('.bottom-nav-btn i.fa-edit')?.parentElement : document.querySelector('.tab-button i.fa-edit')?.parentElement,
+            title: "سجل النحال الرقمي 📝",
+            text: "وداعاً للدفاتر الورقية التي تضيع أو تتلف بآثار العسل! وأنت واقف أمام الخلية، يمكنك تدوين حالتها، قوة ملكتها، ومخزونها في ثوانٍ معدودة لتكوّن تاريخاً دقيقاً لكل طائفة."
+        },
+        {
+            target: document.getElementById('quick-actions-btn'),
+            title: "عصاك السحرية لتوفير الوقت ⚡",
+            text: "لأن وقتك ثمين بين الخلايا. هل قمت بإضافة شمع أساس أو تغذية لـ 20 خلية معاً؟ بضغطة واحدة هنا يمكنك تسجيل هذا الإجراء لكل تلك الخلايا دفعة واحدة دون الحاجة لفتح سجل كل خلية على حدة."
+        },
+        {
+            target: isMobile ? document.querySelector('.bottom-nav-btn i.fa-star')?.parentElement : document.querySelector('.tab-button i.fa-star')?.parentElement,
+            title: "حكمة الأجداد مدمجة بالتقنية 🌟",
+            text: "النحال الماهر يعرف مواسمه. لقد دمجنا لك حركة النجوم (كالوسم وسهيل) بحالة النحل، لنوفر لك نصائح استباقية تخبرك متى تتوقع التطريد، أو متى تجهز طوائفك لقطفة العسل الكبرى."
+        },
+        {
+            target: isMobile ? document.querySelector('.bottom-nav-btn i.fa-chart-line')?.parentElement : document.querySelector('.tab-button i.fa-chart-line')?.parentElement,
+            title: "مستشارك الخاص للتطوير 📈",
+            text: "البيانات هنا تتحول إلى قرارات ناجحة. راقب كيف تتأثر قوة الخلية بعمر الملكة بمرور الزمن من خلال رسومات واضحة. هذه التحليلات ستساعدك على استبعاد الملكات الضعيفة ومضاعفة إنتاجك للموسم القادم."
+        }
+    ];
+
+    tutorialSteps = tutorialSteps.filter(step => step.target !== null || step.title.includes("عالمك"));
+}
+
+async function startTutorial() {
+    // التحقق مما إذا كان المستخدم قد أتم الجولة سابقاً
+    const hasSeen = (await DBHelper.get("settings", "hasSeenTutorial"))?.value;
+    if (hasSeen) return;
+
+    initTutorialSteps();
+    currentTutorialStep = 0;
+    
+    // إخفاء القوائم الجانبية لو كانت مفتوحة لتجنب التداخل
+    const sidebar = document.getElementById('main-sidebar');
+    if(sidebar && window.innerWidth <= 768) sidebar.classList.remove('open');
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if(overlay) overlay.classList.remove('active');
+
+    document.getElementById('tutorial-overlay').classList.add('active');
+    showTutorialStep();
+}
+
+function showTutorialStep() {
+    if (currentTutorialStep >= tutorialSteps.length) {
+        endTutorial();
+        return;
+    }
+
+    const step = tutorialSteps[currentTutorialStep];
+    const dialog = document.getElementById('tutorial-dialog');
+
+    // إزالة التظليل عن العنصر السابق
+    document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+
+    // تعبئة البيانات
+    document.getElementById('tutorial-title').innerHTML = step.title;
+    document.getElementById('tutorial-text').textContent = step.text;
+    document.getElementById('tutorial-progress').textContent = `${currentTutorialStep + 1} / ${tutorialSteps.length}`;
+
+    dialog.classList.add('active');
+
+    // تظليل العنصر المستهدف والتمرير إليه
+    if (step.target) {
+        step.target.classList.add('tutorial-highlight');
+        step.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // تغيير زر التالي في الخطوة الأخيرة
+    if (currentTutorialStep === tutorialSteps.length - 1) {
+        document.getElementById('tutorial-next').innerHTML = 'ابدأ العمل! <i class="fas fa-check"></i>';
+        document.getElementById('tutorial-next').style.backgroundColor = 'var(--success-color)';
+    } else {
+        document.getElementById('tutorial-next').innerHTML = 'التالي <i class="fas fa-chevron-left"></i>';
+        document.getElementById('tutorial-next').style.backgroundColor = 'var(--header-alt-color)';
+    }
+}
+
+function nextTutorialStep() {
+    currentTutorialStep++;
+    showTutorialStep();
+}
+
+async function endTutorial() {
+    document.getElementById('tutorial-overlay').classList.remove('active');
+    document.getElementById('tutorial-dialog').classList.remove('active');
+    document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+    
+    // حفظ في القاعدة أن المستخدم أنهى الجولة لكي لا تظهر له مرة أخرى
+    await DBHelper.put("settings", { key: "hasSeenTutorial", value: true });
+    
+    // رفع حالة الإعدادات للسحابة إن كان مسجلاً
+    if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+        FirebaseHelper.saveItem("settings", "hasSeenTutorial", { key: "hasSeenTutorial", value: true });
+    }
+}
+
     // نقطة الدخول الرئيسية
     window.onload = async function () {
         try {
@@ -3290,6 +3462,26 @@ toggleMobileSidebar
                        showFirebaseAuthModal();
                    }
                 }
+            
+            // ===== الكود الجديد: تشغيل الجولة التعريفية =====
+            // تأخير بسيط لإعطاء فرصة للواجهة لتكتمل
+            setTimeout(() => {
+                // التأكد من عدم وجود نافذة فايربيس المفتوحة كي لا تتداخل
+                if (document.getElementById("firebase-modal").style.display !== "flex") {
+                    startTutorial();
+                } else {
+                    // إذا نافذة التسجيل مفتوحة، ننتظر حتى يغلقها المستخدم
+                    const observer = new MutationObserver((mutations) => {
+                        if (document.getElementById("firebase-modal").style.display === "none") {
+                            startTutorial();
+                            observer.disconnect();
+                        }
+                    });
+                    observer.observe(document.getElementById("firebase-modal"), { attributes: true, attributeFilter: ['style'] });
+                }
+            }, 500);
+            // ===============================================
+
             }, 1000);
             
         } catch (e) {
@@ -3331,19 +3523,6 @@ toggleMobileSidebar
                 });
         });
     }
-// منع التحديث عند السحب لأسفل فقط
-document.addEventListener('touchstart', function(e) {
-    if (e.touches.length !== 1) return;
-    this.startY = e.touches[0].pageY;
-}, {passive: false});
-
-document.addEventListener('touchmove', function(e) {
-    var y = e.touches[0].pageY;
-    // إذا كان المستخدم في أعلى الصفحة ويحاول السحب للأسفل
-    if (document.scrollingElement.scrollTop === 0 && y > this.startY) {
-        e.preventDefault();
-    }
-}, {passive: false});
 </script>
 </body>
 </html>
