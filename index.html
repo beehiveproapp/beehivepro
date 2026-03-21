@@ -617,6 +617,33 @@ button {
 button:active {
     transform: scale(0.95) !important;
 }
+
+/* --- تأثير العلامة المائية لرقم الخلية في جدول الملاحظات --- */
+.notes-cell {
+    position: relative;
+    overflow: hidden;
+}
+
+.notes-cell::before {
+    content: attr(data-hive-number); /* سحب رقم الخلية من الـ HTML */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4.5rem; /* حجم الخط كبير ليكون كخلفية */
+    font-weight: 900;
+    color: var(--header-color); /* لون الهيدر (العسلي/الكهرماني) */
+    opacity: 0.08; /* شفافية عالية جداً لكي لا يزعج القراءة */
+    z-index: 0;
+    pointer-events: none; /* لكي لا يمنع التمرير (الـ scroll) داخل الملاحظات */
+    user-select: none; /* لمنع تحديد الرقم عند نسخ النص */
+}
+
+.notes-cell pre {
+    position: relative;
+    z-index: 1; /* رفع النص ليكون فوق الرقم الشفاف */
+    background: transparent !important;
+}
     </style>
 </head>
 <body>
@@ -2274,7 +2301,7 @@ this.displayHives = async () => {
             <td><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
             <td>${hive.queenStatus} (سنة ${hive.queenYear || "?"})</td>
             <td>${this.getStockStatus(hive)}</td>
-            <td><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
+<td class="notes-cell" data-hive-number="${hive.hiveId}"><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
             <td class="actions-cell">
                 <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
                 <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
