@@ -486,6 +486,11 @@ body.dark-mode {
     animation: fadeIn 0.3s ease-out forwards;
 }
 
+/* هذا التعديل يمنع التحديث فقط دون قفل التمرير */
+html {
+    overscroll-behavior-y: none; 
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-color);
@@ -495,9 +500,14 @@ body {
     display: flex;
     min-height: 100vh;
     transition: background-color 0.3s, color 0.3s;
-    
-    /* هذا هو السطر الوحيد الذي تحتاجه لإيقاف السحب للتحديث */
-    overscroll-behavior-y: none; 
+    /* تأكد من حذف أي overscroll-behavior من هنا */
+}
+
+.content-area { 
+    flex-grow: 1; 
+    padding: 25px; 
+    overflow-y: auto; /* هذا يسمح بالتمرير */
+    -webkit-overflow-scrolling: touch; /* يجعل التمرير ناعماً في الآيفون */
 }
     </style>
 </head>
@@ -3229,6 +3239,19 @@ toggleMobileSidebar
                 });
         });
     }
+// منع التحديث عند السحب لأسفل فقط
+document.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) return;
+    this.startY = e.touches[0].pageY;
+}, {passive: false});
+
+document.addEventListener('touchmove', function(e) {
+    var y = e.touches[0].pageY;
+    // إذا كان المستخدم في أعلى الصفحة ويحاول السحب للأسفل
+    if (document.scrollingElement.scrollTop === 0 && y > this.startY) {
+        e.preventDefault();
+    }
+}, {passive: false});
 </script>
 </body>
 </html>
