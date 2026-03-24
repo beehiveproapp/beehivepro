@@ -1221,48 +1221,37 @@ const FirebaseHelper = {
     },
 
     async handleLoginSyncStrategy(user) {
-        const userId = user.uid;
         const syncIndicator = getElement("sync-status-indicator");
         syncIndicator.style.display = "block";
         syncIndicator.className = "auth-status signed-in";
-        syncIndicator.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري التحقق من بيانات السحابة...`;
+
+        // 1. التحقق السريع من حالة الاتصال بالإنترنت لإظهار الرسالة المناسبة
+        if (navigator.onLine) {
+            syncIndicator.innerHTML = `<i class="fas fa-sync fa-spin"></i> جاري المزامنة مع السحابة...`;
+        } else {
+            syncIndicator.innerHTML = `<i class="fas fa-wifi" style="color:var(--warning-color);"></i> وضع عدم الاتصال (حفظ محلي)`;
+        }
 
         try {
-            const cloudSitesSnapshot = await db.collection("users").doc(userId).collection("sites").limit(1).get();
+            // 2. تفعيل المزامنة في الخلفية فوراً (لن يعلق التطبيق ولن يمسح بياناتك أبداً)
+            // هذه الدالة ذكية وتعرف كيف تدمج البيانات بدون حذف
+            this.setupRealTimeSync();
 
-            if (!cloudSitesSnapshot.empty) {
-                console.log("Found cloud data. Downloading...");
-                showNotification("جاري جلب بياناتك من السحابة...", "info");
-
-                // مسح البيانات المحلية لتجنب التكرار عند الاستيراد من السحابة
-                await DBHelper.clear("sites");
-                await DBHelper.clear("hives");
-                await DBHelper.clear("tasks");
-                await DBHelper.clear("settings");
-                
-                managers.clear();
-                sites = [];
-                activeSiteId = null;
-
-                // تفعيل الاستماع للتغييرات (وهو ما سيجلب البيانات فعلياً)
-                this.setupRealTimeSync();
-                
-                syncIndicator.innerHTML = `<i class="fas fa-check-circle"></i> تمت المزامنة`;
-            } else {
-                console.log("New user or empty cloud. Uploading local data...");
-                await this.syncLocalToCloud(); // رفع أولي شامل فقط
-                this.setupRealTimeSync();
+            // 3. إذا كان هناك إنترنت، نحاول رفع أي بيانات سجلتها أنت عندما كنت "أوفلاين"
+            if (navigator.onLine) {
+                this.syncLocalToCloud().catch(e => console.log("المزامنة ستتم لاحقاً"));
             }
-            
+
+            // 4. تغيير الرسالة لتعرض إيميلك بعد ثانيتين
             setTimeout(() => {
                 syncIndicator.innerHTML = `<i class="fas fa-cloud"></i> متصل: ${user.email}`;
-            }, 2000);
+            }, 2500);
 
         } catch (error) {
             console.error("Login Sync Error:", error);
             syncIndicator.innerHTML = `<i class="fas fa-exclamation-triangle"></i> خطأ في الاتصال`;
         }
-    },
+    }
     
     async updateAuthUI(user) {
         const statusElement = getElement("current-sync-status");
