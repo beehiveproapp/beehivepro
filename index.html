@@ -959,13 +959,9 @@ button:active {
                         <button onclick="showFirebaseAuthModal()" style="background-color: var(--info-color);">
                             <i class="fas fa-cloud-upload-alt"></i> إدارة المزامنة السحابية
                         </button>
-                        </div>
-
-                    <div class="app-info-footer" style="text-align: center; margin-top: 40px; padding: 20px 10px; border-top: 1px dashed var(--border-color); color: var(--text-color); opacity: 0.6; font-size: 0.9em;">
-                        <p style="margin: 0 0 8px 0;"><i class="fas fa-shield-alt"></i> <strong>إدارة المناحل المتقدمة</strong> (نسخة احترافية)</p>
-                        <p style="margin: 0;">حقوق الطبع والنشر &copy; 2025. جميع الحقوق محفوظة.</p>
                     </div>
                 </div>
+            </div>
 
             <div id="global-stats-view" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -994,6 +990,13 @@ button:active {
                     <div class="chart-container" style="grid-column: 1 / -1;"><h3>مقارنة متوسط مخزون العسل (بالإطارات)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteAvgHoneyCanvas"></canvas></div></div>
                 </div>
             </div>
+
+        </div>
+        <footer class="app-footer">
+            <p>حقوق الطبع والنشر &copy; 2025 إدارة المناحل الاحترافية. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+</div>
 
 <div class="modal-overlay" id="custom-modal">
     <div class="modal-box">
@@ -1177,207 +1180,218 @@ const FirebaseHelper = {
     syncInProgress: false,
     currentUser: null,
     
-    // تهيئة Firebase ومراقبة حالة تسجيل الدخول
     async init() {
         auth.onAuthStateChanged(async (user) => {
             this.currentUser = user;
             await this.updateAuthUI(user);
             if (user) {
-                // إخفاء نافذة تسجيل الدخول إذا كان المستخدم مسجلاً
-                if(typeof hideFirebaseAuthModal === 'function') hideFirebaseAuthModal();
-                // بدء استراتيجية المزامنة الذكية
+                hideFirebaseAuthModal();
+                // عند تسجيل الدخول فقط نقوم بالمزامنة الشاملة للتأكد من تطابق البيانات
                 await this.handleLoginSyncStrategy(user);
             }
         });
     },
 
-    // حفظ البيانات في السحابة (Firebase Firestore)
+    // دالة جديدة: رفع عنصر واحد فقط للسحابة (إضافة أو تعديل)
     async saveItem(collectionName, docId, data) {
         if (!this.currentUser) return;
         try {
             const userId = this.currentUser.uid;
-            // إضافة طابع زمني ومعرف المستخدم للبيانات
-            const dataToUpload = { 
-                ...data, 
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(), 
-                userId: userId 
-            };
+            // إضافة طابع زمني ورقم المستخدم
+            const dataToUpload = { ...data, lastUpdated: firebase.firestore.FieldValue.serverTimestamp(), userId: userId };
+            
+            // التأكد من أن المعرف نصي
             const safeDocId = String(docId);
-            // استخدام set مع merge لضمان عدم حذف الحقول غير الموجودة في التحديث
+            
             await db.collection("users").doc(userId).collection(collectionName).doc(safeDocId).set(dataToUpload, { merge: true });
+            console.log(`Saved to cloud: ${collectionName}/${safeDocId}`);
         } catch (error) {
-            console.error("خطأ في حفظ البيانات سحابياً:", error);
+            console.error("Cloud Save Error:", error);
+            showNotification("فشل الحفظ في السحابة، سيتم المحاولة لاحقاً", "warning");
         }
     },
 
-    // حذف البيانات من السحابة
+    // دالة جديدة: حذف عنصر واحد من السحابة
     async deleteItem(collectionName, docId) {
         if (!this.currentUser) return;
         try {
             const userId = this.currentUser.uid;
             await db.collection("users").doc(userId).collection(collectionName).doc(String(docId)).delete();
+            console.log(`Deleted from cloud: ${collectionName}/${docId}`);
         } catch (error) {
-            console.error("خطأ في حذف البيانات سحابياً:", error);
+            console.error("Cloud Delete Error:", error);
         }
     },
 
-    // استراتيجية المزامنة عند فتح التطبيق (معدلة لمنع التعليق وفقدان البيانات)
     async handleLoginSyncStrategy(user) {
+        const userId = user.uid;
         const syncIndicator = getElement("sync-status-indicator");
-        if (syncIndicator) {
-            syncIndicator.style.display = "block";
-            syncIndicator.className = "auth-status signed-in";
-
-            // فحص حالة الإنترنت لتحديد الرسالة التي تظهر للمستخدم
-            if (navigator.onLine) {
-                syncIndicator.innerHTML = `<i class="fas fa-sync fa-spin"></i> جاري المزامنة مع السحابة...`;
-            } else {
-                syncIndicator.innerHTML = `<i class="fas fa-wifi" style="color:var(--warning-color);"></i> وضع عدم الاتصال (حفظ محلي)`;
-            }
-        }
+        syncIndicator.style.display = "block";
+        syncIndicator.className = "auth-status signed-in";
+        syncIndicator.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري التحقق من بيانات السحابة...`;
 
         try {
-            // تفعيل المزامنة الفورية (Snapshots) دون مسح البيانات المحلية
-            this.setupRealTimeSync();
+            const cloudSitesSnapshot = await db.collection("users").doc(userId).collection("sites").limit(1).get();
 
-            // إذا وجد إنترنت، نقوم برفع البيانات التي سجلتها "أوفلاين" إلى السحابة
-            if (navigator.onLine) {
-                this.syncLocalToCloud().catch(e => console.log("المزامنة ستكتمل في الخلفية"));
-            }
+            if (!cloudSitesSnapshot.empty) {
+                console.log("Found cloud data. Downloading...");
+                showNotification("جاري جلب بياناتك من السحابة...", "info");
 
-            // تحديث الرسالة لعرض بريد المستخدم بعد نجاح الدخول
-            if (syncIndicator) {
-                setTimeout(() => {
-                    syncIndicator.innerHTML = `<i class="fas fa-cloud"></i> متصل: ${user.email}`;
-                }, 2500);
+                // مسح البيانات المحلية لتجنب التكرار عند الاستيراد من السحابة
+                await DBHelper.clear("sites");
+                await DBHelper.clear("hives");
+                await DBHelper.clear("tasks");
+                await DBHelper.clear("settings");
+                
+                managers.clear();
+                sites = [];
+                activeSiteId = null;
+
+                // تفعيل الاستماع للتغييرات (وهو ما سيجلب البيانات فعلياً)
+                this.setupRealTimeSync();
+                
+                syncIndicator.innerHTML = `<i class="fas fa-check-circle"></i> تمت المزامنة`;
+            } else {
+                console.log("New user or empty cloud. Uploading local data...");
+                await this.syncLocalToCloud(); // رفع أولي شامل فقط
+                this.setupRealTimeSync();
             }
+            
+            setTimeout(() => {
+                syncIndicator.innerHTML = `<i class="fas fa-cloud"></i> متصل: ${user.email}`;
+            }, 2000);
 
         } catch (error) {
-            console.error("خطأ في استراتيجية المزامنة:", error);
-            if(syncIndicator) syncIndicator.innerHTML = `<i class="fas fa-exclamation-triangle"></i> خطأ في الاتصال`;
+            console.error("Login Sync Error:", error);
+            syncIndicator.innerHTML = `<i class="fas fa-exclamation-triangle"></i> خطأ في الاتصال`;
         }
     },
     
-    // تحديث واجهة المستخدم بناءً على حالة الحساب
     async updateAuthUI(user) {
         const statusElement = getElement("current-sync-status");
         const syncIndicator = getElement("sync-status-indicator");
         
         if (user) {
-            if (statusElement) {
-                statusElement.innerHTML = `<p>مسجل الدخول: ${user.email}</p>`;
-                statusElement.className = "auth-status signed-in";
-                
-                // إضافة زر تسجيل الخروج في الإعدادات إذا لم يكن موجوداً
-                if(!document.getElementById('logout-btn-settings')) {
-                    const logoutBtn = document.createElement('button');
-                    logoutBtn.id = 'logout-btn-settings';
-                    logoutBtn.className = 'logout-btn';
-                    logoutBtn.style.backgroundColor = 'var(--danger-color)';
-                    logoutBtn.style.marginTop = '10px';
-                    logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل الخروج';
-                    logoutBtn.onclick = confirmSignOut;
-                    statusElement.appendChild(logoutBtn);
-                }
+            statusElement.innerHTML = `<p>مسجل الدخول: ${user.email}</p>`;
+            statusElement.className = "auth-status signed-in";
+            
+            if(!document.getElementById('logout-btn-settings')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logout-btn-settings';
+                logoutBtn.style.backgroundColor = 'var(--danger-color)';
+                logoutBtn.style.marginTop = '10px';
+                logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> تسجيل الخروج';
+                logoutBtn.onclick = confirmSignOut;
+                statusElement.appendChild(logoutBtn);
             }
-            if (syncIndicator) syncIndicator.style.display = "block";
+            syncIndicator.style.display = "block";
         } else {
-            if (statusElement) {
-                statusElement.innerHTML = `<p>الحالة: غير مسجل</p>`;
-                statusElement.className = "auth-status signed-out";
-            }
-            if (syncIndicator) syncIndicator.style.display = "none";
+            statusElement.innerHTML = `<p>الحالة: غير مسجل</p>`;
+            statusElement.className = "auth-status signed-out";
+            syncIndicator.style.display = "none";
         }
     },
     
-    // مزامنة البيانات المخزنة محلياً (IndexedDB) إلى السحابة
+    // المزامنة الشاملة (تستخدم فقط عند تسجيل الدخول لأول مرة أو الدمج اليدوي)
     async syncLocalToCloud() {
         if (this.syncInProgress || !this.currentUser) return;
         this.syncInProgress = true;
         
         try {
-            // مزامنة المناحل
-            const sites = await DBHelper.getAll("sites");
-            for (const site of sites) await this.saveItem("sites", site.id, site);
+            const userId = this.currentUser.uid;
             
-            // مزامنة الخلايا
+            // رفع المواقع
+            const sites = await DBHelper.getAll("sites");
+            for (const site of sites) {
+                await this.saveItem("sites", site.id, site);
+            }
+            
+            // رفع الخلايا
             const hives = await DBHelper.getAll("hives");
             for (const hive of hives) {
+                // نستخدم recordId كمعرف للمستند
                 if (hive.recordId) await this.saveItem("hives", hive.recordId, hive);
             }
 
-            // مزامنة المهام
+            // رفع المهام
             const tasks = await DBHelper.getAll("tasks");
             for (const task of tasks) {
                 if (task.id) await this.saveItem("tasks", task.id, task);
             }
 
-            // مزامنة الإعدادات
+            // رفع الإعدادات
             const settings = await DBHelper.getAll("settings");
             for (const setting of settings) {
                 await this.saveItem("settings", setting.key, setting);
             }
             
         } catch (error) {
-            console.error("خطأ أثناء المزامنة الشاملة:", error);
+            console.error("Full Sync Error:", error);
         } finally {
             this.syncInProgress = false;
         }
     },
     
-    // مراقبة التغييرات في السحابة وتحديث الهاتف فوراً (Real-time)
     setupRealTimeSync() {
         if (!this.currentUser) return;
         const userId = this.currentUser.uid;
         
-        // مراقبة تغييرات المناحل
+        // دالة مساعدة لتحديث البيانات المحلية دون إعادة الرفع للسحابة (لتجنب الحلقات المفرغة)
+        const updateLocal = async (store, data, keyField) => {
+            // هنا نقوم فقط بالتحديث المحلي، ولن نستدعي دوال الرفع
+            await DBHelper.put(store, data);
+        };
+
+        // الاستماع للمواقع
         db.collection("users").doc(userId).collection("sites").onSnapshot(async (snapshot) => {
             let needsRefresh = false;
-            if (snapshot.empty && (typeof sites === 'undefined' || sites.length === 0)) return;
+            if (snapshot.empty && sites.length === 0) return;
 
             for (const change of snapshot.docChanges()) {
                 const siteData = change.doc.data();
                 if (change.type === "added" || change.type === "modified") {
                     await DBHelper.put("sites", { id: siteData.id, name: siteData.name, sortState: siteData.sortState });
-                    if (typeof managers !== 'undefined' && !managers.has(siteData.id)) {
-                         managers.set(siteData.id, new BeehiveManager(siteData.id));
-                    }
+                    if (!managers.has(siteData.id)) managers.set(siteData.id, new BeehiveManager(siteData.id));
                     needsRefresh = true;
                 }
                 if (change.type === "removed") {
-                    await DBHelper.delete("sites", siteData.id);
-                    if (typeof managers !== 'undefined') managers.delete(siteData.id);
-                    needsRefresh = true;
+                        await DBHelper.delete("sites", siteData.id);
+                        managers.delete(siteData.id);
+                        needsRefresh = true;
                 }
             }
             if (needsRefresh) {
-                if (typeof sites !== 'undefined') sites = await DBHelper.getAll("sites");
-                if (typeof createSiteButtons === 'function') await createSiteButtons();
+                sites = await DBHelper.getAll("sites");
+                await createSiteButtons();
+                if (sites.length > 0 && !sites.find(s => s.id === activeSiteId)) openSite(sites[0].id);
+                else if (sites.length > 0 && activeSiteId) beehiveManager.getActive().refreshUI();
             }
         });
         
-        // مراقبة تغييرات الخلايا
+        // الاستماع للخلايا
         db.collection("users").doc(userId).collection("hives").onSnapshot((snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
                 const hiveData = change.doc.data();
+                // تأكد من تحويل recordId لرقم إذا كان مخزناً كنص
                 if (hiveData.recordId) hiveData.recordId = parseInt(hiveData.recordId); 
 
                 if (change.type === "added" || change.type === "modified") {
                     await DBHelper.put("hives", hiveData);
                 }
                 if (change.type === "removed") {
-                    const docId = parseInt(change.doc.id);
+                    // نستخدم hiveData.recordId للحذف
+                    // ملاحظة: الحذف من السحابة يعيد البيانات لكن قد نحتاج لتأكيد المعرف
+                    const docId = parseInt(change.doc.id); // المعرف في فايرستور هو recordId
                     if(!isNaN(docId)) await DBHelper.delete("hives", docId);
                 }
                 
-                // تحديث الواجهة إذا كانت الخلية تابعة للمنحل المفتوح حالياً
-                if (typeof beehiveManager !== 'undefined' && beehiveManager.getActive() && hiveData.siteId === activeSiteId) {
+                if (beehiveManager.getActive() && hiveData.siteId === activeSiteId) {
                     beehiveManager.getActive().refreshUI();
                 }
             });
         });
             
-        // مراقبة تغييرات المهام
+        // الاستماع للمهام
         db.collection("users").doc(userId).collection("tasks").onSnapshot((snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
                 const taskData = change.doc.data();
@@ -1389,34 +1403,48 @@ const FirebaseHelper = {
                      if(!isNaN(docId)) await DBHelper.delete("tasks", docId);
                 }
                 
-                if (typeof beehiveManager !== 'undefined' && beehiveManager.getActive()) {
-                    beehiveManager.getActive().displayTasks();
-                }
+                if (beehiveManager.getActive()) beehiveManager.getActive().displayTasks();
             });
         });
     },
 
-    // تسجيل الدخول عبر جوجل
+    // دوال المصادقة (بقيت كما هي)
     async signInWithGoogle() {
          try {
             const provider = new firebase.auth.GoogleAuthProvider();
             await auth.signInWithPopup(provider);
-            if(typeof showNotification === 'function') showNotification("تم تسجيل الدخول بنجاح!", "success");
+            showNotification("تم تسجيل الدخول بنجاح!", "success");
         } catch (error) {
-            console.error("خطأ تسجيل دخول جوجل:", error);
-            if(typeof showNotification === 'function') showNotification("فشل تسجيل الدخول", "error");
+            console.error("Google sign-in error:", error);
+            showNotification("فشل تسجيل الدخول: " + error.message, "error");
         }
     },
-
-    // تسجيل الخروج
+    async signInWithEmail(email, password) {
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            showNotification("تم تسجيل الدخول بنجاح!", "success");
+        } catch (error) {
+            console.error("Email sign-in error:", error);
+            showNotification("فشل تسجيل الدخول: " + error.message, "error");
+        }
+     },
+    async signUpWithEmail(email, password) {
+         try {
+            await auth.createUserWithEmailAndPassword(email, password);
+            showNotification("تم إنشاء الحساب بنجاح!", "success");
+        } catch (error) {
+            console.error("Sign-up error:", error);
+            showNotification("فشل إنشاء الحساب: " + error.message, "error");
+        }
+    },
     async signOut() {
         try {
             await auth.signOut();
-            if(typeof showNotification === 'function') showNotification("تم تسجيل الخروج", "info");
-            // إعادة تحميل التطبيق لتنظيف الذاكرة
+            showNotification("تم تسجيل الخروج", "info");
             setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
-            console.error("خطأ تسجيل الخروج:", error);
+            console.error("Sign-out error:", error);
+            showNotification("فشل تسجيل الخروج", "error");
         }
     }
 };
