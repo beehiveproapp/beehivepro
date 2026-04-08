@@ -644,6 +644,24 @@ button:active {
     z-index: 1; /* رفع النص ليكون فوق الرقم الشفاف */
     background: transparent !important;
 }
+
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2100; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .popup-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .popup-content {
+            background: white; border-radius: 16px; padding: 20px;
+            width: 90%; max-width: 450px; text-align: right;
+            border: 2px solid #fdf6e7; border-bottom: 4px solid #f59e0b;
+        }
+        .popup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #feeac4; padding-bottom: 10px; margin-bottom: 15px; }
+        .popup-title { margin: 0; font-size: 1.1rem; color: #333; }
+        .close-popup-btn { cursor: pointer; font-size: 1.5rem; font-weight: bold; color: #f59e0b; padding: 0 5px; }
+        .popup-body { position: relative; }
+        .popup-note { font-size: 0.8rem; color: #777; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
@@ -1045,6 +1063,22 @@ button:active {
         </div>
     </div>
 </div>
+
+    <div id="hive-strength-popup" class="popup-overlay popup-hidden" onclick="window.closeHiveStrengthPopup(event)">
+        <div class="popup-content shadow" onclick="event.stopPropagation()">
+            <div class="popup-header">
+                <span class="close-popup-btn" onclick="window.closeHiveStrengthPopup(event)">&times;</span>
+                <h3 class="popup-title">تطور قوة الخلية (بالإطارات)</h3>
+                <p id="popup-hive-number" style="margin: 0; color: #f59e0b; font-weight: bold;"></p>
+            </div>
+            <div class="popup-body">
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="strength-popup-chart"></canvas>
+                </div>
+                <p class="popup-note">اضغط على أيقونة الإغلاق للخروج.</p>
+            </div>
+        </div>
+    </div>
 
 <div id="notification-container"></div>
 
@@ -1844,29 +1878,54 @@ window.togglePassword = function(inputId, icon) {
                 title: "تطبيق إجراء جماعي",
                 message: `سيتم تطبيق هذا الإجراء على ${selectedHives.length} خلية محددة. هل أنت متأكد؟`,
                 onConfirm: async () => {
-                    // إخفاء النافذة أولاً لعدم تأخير المستخدم
                     hideModal();
-                    
-                    // استدعاء الدالة (التي تم تسريعها سابقاً)
                     await activeManager.applyBulkAction(selectedHives, framesChange, noteText, stockType, stockChange);
-                    
                     showNotification(`تم تطبيق الإجراء على ${selectedHives.length} خلية.`, "success");
-                    // التحديث قد تم بالفعل داخل applyBulkAction
                 }
             });
         } else {
+            // جلب رقم الخلية المكتوب في الاستمارة حالياً
+            const currentHiveId = getElement("hive-id").value;
             const notesEl = getElement("notes");
-            if (framesChange !== 0) changeValue("frames", framesChange);
             
-            if (stockChange !== 0) {
-                if (stockType === 'honey') changeValue("honey-frames", stockChange);
-                if (stockType === 'pollen') changeValue("pollen-frames", stockChange);
-            }
+            // إذا كان المستخدم قد استدعى خلية في الاستمارة العلوية ولم يحدد في الجدول
+            if (currentHiveId) {
+                showModal({
+                    title: "تأكيد الإجراء السريع",
+                    message: `لم تقم بتحديد أي خلايا بعلامة (صح) من الجدول. هل تريد تطبيق هذا الإجراء وحفظه مباشرة للخلية رقم (${currentHiveId}) المفتوحة في الاستمارة الحالية؟`,
+                    confirmText: "نعم، تطبيق وحفظ",
+                    onConfirm: () => {
+                        hideModal(); // إخفاء نافذة التأكيد
+                        
+                        // تطبيق التغييرات على استمارة الإدخال
+                        if (framesChange !== 0) window.changeValue("frames", framesChange);
+                        
+                        if (stockChange !== 0) {
+                            if (stockType === 'honey') window.changeValue("honey-frames", stockChange);
+                            if (stockType === 'pollen') window.changeValue("pollen-frames", stockChange);
+                        }
 
-            notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
-            
-            showNotification("لم يتم تحديد خلايا، تم تطبيق الإجراء على استمارة الإدخال.", "info");
+                        notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
+                        
+                        // نقوم بحفظ التغييرات تلقائياً كفحص جديد
+                        activeManager.saveHive();
+                    }
+                });
+            } else {
+                // إذا لم يحدد في الجدول ولم يكتب رقم في الاستمارة أساساً
+                // نجهز الاستمارة فقط ولا نقوم بالحفظ
+                if (framesChange !== 0) window.changeValue("frames", framesChange);
+                
+                if (stockChange !== 0) {
+                    if (stockType === 'honey') window.changeValue("honey-frames", stockChange);
+                    if (stockType === 'pollen') window.changeValue("pollen-frames", stockChange);
+                }
+
+                notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
+                showNotification("تم تجهيز الإجراء في الاستمارة، يرجى كتابة رقم الخلية ثم الضغط على إضافة سجل.", "info");
+            }
         }
+        
         const menu = getElement("quick-actions-menu");
         if(menu) menu.style.display = "none";
     }
@@ -3471,11 +3530,109 @@ async function endTutorial() {
     }
 }
 
+    // --- دوال الصفحة المنبثقة لقوة الخلية ---
+    let longPressTimer;
+    let currentStrengthChartInstance;
+
+    window.showHiveStrengthPopup = async function(hiveId) {
+        if (navigator.vibrate) navigator.vibrate(50);
+        const manager = beehiveManager.getActive();
+        if (!manager) return;
+
+        const popup = getElement("hive-strength-popup");
+        getElement("popup-hive-number").textContent = `للخلية رقم: ${hiveId}`;
+        popup.classList.remove("popup-hidden");
+
+        if (currentStrengthChartInstance) currentStrengthChartInstance.destroy();
+
+        // 1. استخدام دالة جلب البيانات المعالجة (الخاصة بتبويب التحليلات)
+        const history = await manager.loadHistoryForHive(hiveId);
+        const validHistory = history.filter(h => h.frames !== undefined && !isNaN(h.frames));
+
+        if (validHistory.length === 0) {
+            showNotification("لا توجد بيانات لعرضها.", "info");
+            return;
+        }
+
+        let labels = validHistory.map(h => { const d = new Date(h.date); return `${d.getMonth() + 1}/${d.getDate()}`; });
+        let framesData = validHistory.map(h => h.frames);
+
+        // 2. تطبيق خوارزمية التحليل: تقليل كثافة البيانات على شاشات الجوال لمنع التزاحم والتمدد
+        if (window.innerWidth < 768 && validHistory.length > 6) {
+            const step = Math.ceil(validHistory.length / 6);
+            labels = labels.filter((_, i) => i % step === 0);
+            framesData = framesData.filter((_, i) => i % step === 0);
+        }
+
+        const ctx = getElement("strength-popup-chart").getContext('2d');
+        currentStrengthChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: [{ label: 'الإطارات', data: framesData, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 3, fill: true, tension: 0.3 }] },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { y: { beginAtZero: true, suggestedMax: 10 } } // إضافة حد أقصى افتراضي لثبات الشكل
+            }
+        });
+    }
+
+    window.closeHiveStrengthPopup = function(event) {
+        event?.stopPropagation();
+        getElement("hive-strength-popup").classList.add("popup-hidden");
+        if (currentStrengthChartInstance) currentStrengthChartInstance.destroy();
+    };
+
     // نقطة الدخول الرئيسية
     window.onload = async function () {
         try {
             await DBHelper.init();
             await initializeApp();
+
+            // تفعيل الضغط المستمر على جدول الخلايا
+            const listContainer = getElement("hives-table-body");
+            let touchStartX = 0, touchStartY = 0;
+            const cancelLongPress = () => clearTimeout(longPressTimer);
+
+            if (listContainer) {
+                listContainer.addEventListener('mousedown', startLongPress);
+                
+                listContainer.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    startLongPress(e);
+                }, {passive: true});
+
+                ['mouseup', 'mouseleave', 'touchend'].forEach(evt => listContainer.addEventListener(evt, cancelLongPress));
+                
+                // إلغاء الضغط المستمر فقط إذا تحرك الإصبع مسافة ملحوظة (لحل مشكلة حساسية اللمس)
+                listContainer.addEventListener('touchmove', (e) => {
+                    if (Math.abs(e.touches[0].clientX - touchStartX) > 10 || Math.abs(e.touches[0].clientY - touchStartY) > 10) {
+                        cancelLongPress();
+                    }
+                }, {passive: true});
+
+                // منع المتصفح من تحديد النص وإظهار قائمة النسخ عند الضغط المستمر
+                listContainer.addEventListener('contextmenu', (e) => {
+                    if (e.target.closest('tr')) e.preventDefault();
+                });
+            }
+
+            function startLongPress(e) {
+                const hiveRow = e.target.closest('tr');
+                if (!hiveRow || !listContainer.contains(hiveRow)) return;
+                
+                const checkbox = hiveRow.querySelector('.hive-select-checkbox');
+                if (!checkbox) return;
+                const hiveId = parseInt(checkbox.dataset.hiveId);
+                
+                clearTimeout(longPressTimer);
+                // تقليل المدة لـ 500 ملي ثانية لتكون الاستجابة أسرع
+                longPressTimer = setTimeout(() => {
+                    if(window.getSelection) window.getSelection().removeAllRanges(); // إلغاء تظليل النص
+                    window.showHiveStrengthPopup(hiveId);
+                }, 500); 
+            }
 
             const user = await FirebaseHelper.init();
             
