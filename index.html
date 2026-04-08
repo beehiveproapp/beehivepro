@@ -1179,16 +1179,24 @@ const FirebaseHelper = {
     isSyncing: false,
     syncInProgress: false,
     currentUser: null,
+    unsubscribers: [], 
+
+    clearListeners() {
+        this.unsubscribers.forEach(unsub => unsub());
+        this.unsubscribers = [];
+    },
     
     async init() {
-        auth.onAuthStateChanged(async (user) => {
-            this.currentUser = user;
-            await this.updateAuthUI(user);
-            if (user) {
-                hideFirebaseAuthModal();
-                // عند تسجيل الدخول فقط نقوم بالمزامنة الشاملة للتأكد من تطابق البيانات
-                await this.handleLoginSyncStrategy(user);
-            }
+        return new Promise((resolve) => {
+            auth.onAuthStateChanged(async (user) => {
+                this.currentUser = user;
+                await this.updateAuthUI(user);
+                if (user) {
+                    hideFirebaseAuthModal();
+                    await this.handleLoginSyncStrategy(user);
+                }
+                resolve(user);
+            });
         });
     },
 
@@ -1336,14 +1344,14 @@ const FirebaseHelper = {
         if (!this.currentUser) return;
         const userId = this.currentUser.uid;
         
-        // دالة مساعدة لتحديث البيانات المحلية دون إعادة الرفع للسحابة (لتجنب الحلقات المفرغة)
+        this.clearListeners(); // تنظيف قبل البدء
+
         const updateLocal = async (store, data, keyField) => {
-            // هنا نقوم فقط بالتحديث المحلي، ولن نستدعي دوال الرفع
             await DBHelper.put(store, data);
         };
 
         // الاستماع للمواقع
-        db.collection("users").doc(userId).collection("sites").onSnapshot(async (snapshot) => {
+        const unsubSites = db.collection("users").doc(userId).collection("sites").onSnapshot(async (snapshot) => {
             let needsRefresh = false;
             if (snapshot.empty && sites.length === 0) return;
 
@@ -1367,21 +1375,19 @@ const FirebaseHelper = {
                 else if (sites.length > 0 && activeSiteId) beehiveManager.getActive().refreshUI();
             }
         });
-        
+        this.unsubscribers.push(unsubSites);
+
         // الاستماع للخلايا
-        db.collection("users").doc(userId).collection("hives").onSnapshot((snapshot) => {
+        const unsubHives = db.collection("users").doc(userId).collection("hives").onSnapshot((snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
                 const hiveData = change.doc.data();
-                // تأكد من تحويل recordId لرقم إذا كان مخزناً كنص
                 if (hiveData.recordId) hiveData.recordId = parseInt(hiveData.recordId); 
 
                 if (change.type === "added" || change.type === "modified") {
                     await DBHelper.put("hives", hiveData);
                 }
                 if (change.type === "removed") {
-                    // نستخدم hiveData.recordId للحذف
-                    // ملاحظة: الحذف من السحابة يعيد البيانات لكن قد نحتاج لتأكيد المعرف
-                    const docId = parseInt(change.doc.id); // المعرف في فايرستور هو recordId
+                    const docId = parseInt(change.doc.id); 
                     if(!isNaN(docId)) await DBHelper.delete("hives", docId);
                 }
                 
@@ -1390,9 +1396,10 @@ const FirebaseHelper = {
                 }
             });
         });
+        this.unsubscribers.push(unsubHives);
             
         // الاستماع للمهام
-        db.collection("users").doc(userId).collection("tasks").onSnapshot((snapshot) => {
+        const unsubTasks = db.collection("users").doc(userId).collection("tasks").onSnapshot((snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
                 const taskData = change.doc.data();
                 if (taskData.id) taskData.id = parseInt(taskData.id);
@@ -1406,6 +1413,7 @@ const FirebaseHelper = {
                 if (beehiveManager.getActive()) beehiveManager.getActive().displayTasks();
             });
         });
+        this.unsubscribers.push(unsubTasks);
     },
 
     // دوال المصادقة (بقيت كما هي)
@@ -1439,6 +1447,7 @@ const FirebaseHelper = {
     },
     async signOut() {
         try {
+            this.clearListeners();
             await auth.signOut();
             showNotification("تم تسجيل الخروج", "info");
             setTimeout(() => window.location.reload(), 1000);
@@ -1846,7 +1855,6 @@ window.togglePassword = function(inputId, icon) {
                 }
             });
         } else {
-            // الإجراء الفردي (تعديل المدخلات فقط - لا يحتاج لتسريع لأنه لا يتصل بالنت أصلاً)
             const notesEl = getElement("notes");
             if (framesChange !== 0) changeValue("frames", framesChange);
             
@@ -1856,8 +1864,9 @@ window.togglePassword = function(inputId, icon) {
             }
 
             notesEl.value = notesEl.value.trim() ? `${notesEl.value}\n${noteText}` : noteText;
+            
+            showNotification("لم يتم تحديد خلايا، تم تطبيق الإجراء على استمارة الإدخال.", "info");
         }
-        // إغلاق القائمة فوراً
         const menu = getElement("quick-actions-menu");
         if(menu) menu.style.display = "none";
     }
@@ -3466,38 +3475,18 @@ async function endTutorial() {
     window.onload = async function () {
         try {
             await DBHelper.init();
-            
-            // تهيئة التطبيق الأساسية
             await initializeApp();
 
-            // تهيئة فايربيس
-            await FirebaseHelper.init();
+            const user = await FirebaseHelper.init();
             
-            // التحقق الذكي: هل المستخدم مسجل دخول بالفعل؟
-            // ننتظر قليلاً للتحقق من حالة المصادقة قبل عرض النافذة
-            // إذا لم يكن هناك مستخدم مسجل مسبقاً في الجلسة، نعرض النافذة
-            // لكن onAuthStateChanged ستقوم بإخفائها إذا اكتشفت المستخدم
+            if (!user && !document.body.classList.contains('local-mode')) {
+                showFirebaseAuthModal();
+            }
             
             setTimeout(() => {
-                if (!auth.currentUser && !document.body.classList.contains('local-mode')) {
-                   // اعرض النافذة فقط إذا لم يتم اكتشاف مستخدم بعد ثانية واحدة
-                   // ولم يقم المستخدم بتخطي التسجيل (وضع محلي)
-                   // ملاحظة: يمكنك إزالة هذا الشرط لفرض الظهور دائماً للزوار الجدد
-                   
-                   // إذا كنت تريدها أن تظهر دائماً في البداية لغير المسجلين:
-                   if (!auth.currentUser) {
-                       showFirebaseAuthModal();
-                   }
-                }
-            
-            // ===== الكود الجديد: تشغيل الجولة التعريفية =====
-            // تأخير بسيط لإعطاء فرصة للواجهة لتكتمل
-            setTimeout(() => {
-                // التأكد من عدم وجود نافذة فايربيس المفتوحة كي لا تتداخل
                 if (document.getElementById("firebase-modal").style.display !== "flex") {
                     startTutorial();
                 } else {
-                    // إذا نافذة التسجيل مفتوحة، ننتظر حتى يغلقها المستخدم
                     const observer = new MutationObserver((mutations) => {
                         if (document.getElementById("firebase-modal").style.display === "none") {
                             startTutorial();
@@ -3507,15 +3496,11 @@ async function endTutorial() {
                     observer.observe(document.getElementById("firebase-modal"), { attributes: true, attributeFilter: ['style'] });
                 }
             }, 500);
-            // ===============================================
-
-            }, 1000);
             
         } catch (e) {
             console.error("Failed to initialize the application:", e);
             showNotification("فشل تهيئة التطبيق، سيتم العمل محلياً", "error");
             getElement("main-app-content").classList.remove("app-hidden");
-            // initializeApp already called
         }
     };
 })();
@@ -3523,15 +3508,13 @@ async function endTutorial() {
     // إغلاق القائمة الجانبية في الجوال تلقائياً عند الضغط على زر ينقل لصفحة جديدة
     window.addEventListener("DOMContentLoaded", () => {
         document.addEventListener('click', function(e) {
-            // التحقق مما إذا كان العنصر المضغوط هو زر القائمة النهائية
             const isMenuButton = e.target.closest('.menu-button') || e.target.closest('.site-button');
             const isDropdownHeader = e.target.closest('.menu-group-header') || e.target.closest('.site-control-btn');
             
-            // إذا كان زراً نهائياً وليس عنوان قائمة منسدلة، والشاشة بحجم الجوال
             if (isMenuButton && !isDropdownHeader && window.innerWidth <= 768) {
                 const sidebar = document.getElementById('main-sidebar');
                 if (sidebar.classList.contains('open')) {
-                    toggleMobileSidebar(); // إغلاق القائمة
+                    window.toggleMobileSidebar(); // تم إصلاح الخطأ هنا بإضافة window
                 }
             }
         });
