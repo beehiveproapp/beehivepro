@@ -2942,16 +2942,21 @@ function applyStarsFeature(enabled) {
             }
         };
 
-        // تم الإصلاح: استخدام debounce لمنع رفرفة الشاشة عند كثرة التحديثات
         this.refreshUI = debounce(async () => {
             this.displayDashboard();
             this.displayHives();
             this.displayTasks();
             
-            const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value;
-            if (recsEnabled) generateSiteRecommendations(this);
-            else getElement("site-recommendations-list").innerHTML = "";
-        }, 150); // الانتظار 150 جزء من الثانية لدمج التحديثات
+            // قراءة حالة المستشار مباشرة من زر التفعيل في الشاشة لضمان عدم اختفائه
+            const recsCheckbox = getElement("recs-feature-checkbox");
+            const recsEnabled = recsCheckbox ? recsCheckbox.checked : true;
+            
+            if (recsEnabled) {
+                generateSiteRecommendations(this);
+            } else {
+                getElement("site-recommendations-list").innerHTML = "";
+            }
+        }, 150);
 
         this.showMainTab = async (tabId) => {
             getElement("global-stats-view").style.display = "none";
@@ -3524,7 +3529,7 @@ function applyStarsFeature(enabled) {
         getElement("stars-feature-checkbox").checked = starsEnabled;
         applyStarsFeature(starsEnabled);
 
-        const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value ?? false;
+const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value ?? true;
         getElement("recs-feature-checkbox").checked = recsEnabled;
         applyRecsFeature(recsEnabled);
 
@@ -3884,9 +3889,14 @@ function initTutorialSteps() {
 }
 
 async function startTutorial() {
-    // التحقق مما إذا كان المستخدم قد أتم الجولة سابقاً
+    // التحقق السريع من التخزين المحلي القوي لمنع التكرار المزعج
+    if (localStorage.getItem("hasSeenTutorial") === "true") return;
+    
     const hasSeen = (await DBHelper.get("settings", "hasSeenTutorial"))?.value;
-    if (hasSeen) return;
+    if (hasSeen) {
+        localStorage.setItem("hasSeenTutorial", "true");
+        return;
+    }
 
     initTutorialSteps();
     currentTutorialStep = 0;
@@ -3946,10 +3956,10 @@ async function endTutorial() {
     document.getElementById('tutorial-dialog').classList.remove('active');
     document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
     
-    // حفظ في القاعدة أن المستخدم أنهى الجولة لكي لا تظهر له مرة أخرى
+    // حفظ قوي جداً في المتصفح لعدم الإزعاج مرة أخرى
+    localStorage.setItem("hasSeenTutorial", "true");
     await DBHelper.put("settings", { key: "hasSeenTutorial", value: true });
     
-    // رفع حالة الإعدادات للسحابة إن كان مسجلاً
     if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
         FirebaseHelper.saveItem("settings", "hasSeenTutorial", { key: "hasSeenTutorial", value: true });
     }
