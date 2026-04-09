@@ -928,6 +928,84 @@ button:active {
     /* تصغير علامة درجة الصحة */
     .health-score { margin: 0; padding: 2px 8px; font-size: 0.85rem; border-radius: 4px;}
 }
+
+/* ==========================================
+   شريط الإجراءات السريعة العائم (Floating Quick Actions)
+   ========================================== */
+.floating-selection-bar {
+    position: fixed;
+    bottom: 80px; /* يظهر فوق القائمة السفلية للموبايل */
+    left: 50%;
+    transform: translateX(-50%) translateY(100px); /* مخفي للأسفل */
+    background: linear-gradient(145deg, var(--header-color), var(--header-alt-color));
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    z-index: 2500;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+}
+.floating-selection-bar.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+@media (min-width: 769px) {
+    .floating-selection-bar { bottom: 30px; }
+}
+.floating-selection-bar button {
+    background: white;
+    color: var(--header-color);
+    border: none;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* /* ==========================================
+   تمييز بطاقات الخلايا وفصلها بالألوان بالكامل
+   ========================================== */
+/* 🟢 الخلايا القوية (أخضر) */
+.table-wrapper tr.hive-strong {
+    border: 1px solid rgba(16, 185, 129, 0.4) !important; /* إطار كامل ملون */
+    border-right: 5px solid var(--success-color) !important; /* شريط أيمن بارز */
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.04), var(--bg-color)) !important; /* خلفية خضراء شفافة جداً */
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08) !important; /* توهج ظلي أخضر يفصل البطاقة */
+}
+
+/* 🟡 الخلايا المتوسطة (كهرماني/برتقالي) */
+.table-wrapper tr.hive-medium {
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    border-right: 5px solid var(--warning-color) !important;
+    background: linear-gradient(145deg, rgba(245, 158, 11, 0.04), var(--bg-color)) !important;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08) !important;
+}
+
+/* 🔴 الخلايا الضعيفة (أحمر) */
+.table-wrapper tr.hive-weak {
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    border-right: 5px solid var(--danger-color) !important;
+    background: linear-gradient(145deg, rgba(239, 68, 68, 0.04), var(--bg-color)) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08) !important;
+}
+
+/* ضمان المسافات بين البطاقات في الموبايل */
+@media (max-width: 768px) {
+    .table-wrapper tr.hive-strong, 
+    .table-wrapper tr.hive-medium, 
+    .table-wrapper tr.hive-weak {
+        margin-bottom: 12px !important; /* مسافة فاصلة واضحة بين كل بطاقة وأخرى */
+        border-right-width: 6px !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -1346,6 +1424,11 @@ button:active {
             </div>
         </div>
     </div>
+
+<div id="floating-selection-bar" class="floating-selection-bar">
+    <span id="selection-count-text">تم تحديد 0 خلايا</span>
+    <button onclick="showQuickActionsModal()"><i class="fas fa-bolt"></i> إجراء سريع</button>
+</div>
 
 <div id="notification-container"></div>
 
@@ -2176,6 +2259,12 @@ function applyStarsFeature(enabled) {
                     hideModal();
                     await activeManager.applyBulkAction(selectedHives, framesChange, noteText, stockType, stockChange);
                     showNotification(`تم تطبيق الإجراء على ${selectedHives.length} خلية.`, "success");
+                    
+                    // 🚀 الإصلاح: إزالة علامات التحديد يدوياً وإخفاء الشريط العائم فوراً
+                    document.querySelectorAll(".hive-select-checkbox").forEach(cb => cb.checked = false);
+                    const selectAll = document.getElementById("select-all-hives");
+                    if (selectAll) selectAll.checked = false;
+                    if (window.updateSelectionUI) window.updateSelectionUI();
                 }
             });
         } else {
@@ -2653,15 +2742,12 @@ function applyStarsFeature(enabled) {
             }
         };
 
-        // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر ---
+        // --- تعديل: دالة الإجراء الجماعي مع الرفع المباشر وتثبيت الشاشة ---
         this.applyBulkAction = async (hiveIds, framesChange, noteText, stockType, stockChange) => {
             const allHives = await this.loadHives();
             const targets = allHives.filter(h => hiveIds.includes(h.hiveId));
-            
-            // مصفوفة لتخزين العناصر التي يجب رفعها للسحابة لاحقاً
             const itemsToSync = [];
 
-            // الحفظ المحلي أولاً للكل
             for (const hive of targets) {
                 const newRecord = { ...hive };
                 delete newRecord.recordId;
@@ -2676,16 +2762,25 @@ function applyStarsFeature(enabled) {
 
                 newRecord.notes = noteText;
                 
-                // حفظ محلي
                 const newId = await DBHelper.add("hives", newRecord);
                 newRecord.recordId = newId;
-                itemsToSync.push(newRecord); // تجهيز للمزامنة
+                itemsToSync.push(newRecord);
             }
             
-            // تحديث الواجهة فوراً
+            // 🔒 التقاط موضع الشاشة الدقيق قبل التحديث
+            const scrollContainer = document.querySelector('.content-area');
+            const currentScroll = scrollContainer ? scrollContainer.scrollTop : 0;
+            const bodyScroll = document.documentElement.scrollTop || document.body.scrollTop;
+
             this.refreshUI();
 
-            // المزامنة السحابية في الخلفية (خارج حلقة الانتظار الرئيسية)
+            // 🔒 استعادة موضع الشاشة وتحديث شريط التحديد العائم فوراً
+            setTimeout(() => {
+                if (scrollContainer) scrollContainer.scrollTop = currentScroll;
+                window.scrollTo(0, bodyScroll);
+                if (window.updateSelectionUI) window.updateSelectionUI(); // إخفاء الشريط وتصفير العداد
+            }, 10);
+
             if (FirebaseHelper.currentUser) {
                 itemsToSync.forEach(item => {
                     FirebaseHelper.saveItem("hives", item.recordId, item).catch(e => console.log("sync pending"));
@@ -2775,10 +2870,18 @@ function applyStarsFeature(enabled) {
 
             // 4. بناء الـ DOM (استخدام DocumentFragment لأداء أفضل)
             const fragment = document.createDocumentFragment();
-            hives.forEach(hive => {
-                const score = this.calculateHealthScore(hive);
-                const hue = score * 0.01 * 120; // 0=red, 120=green
-                const row = document.createElement("tr");
+        hives.forEach(hive => {
+            const score = this.calculateHealthScore(hive);
+            const hue = score * 0.01 * 120; // 0=red, 120=green
+            
+            // 🎨 تحديد تصنيف الخلية ولون البطاقة بناءً على عدد الإطارات
+            let strengthClass = "";
+            if (hive.frames >= 7) strengthClass = "hive-strong";
+            else if (hive.frames >= 4) strengthClass = "hive-medium";
+            else strengthClass = "hive-weak";
+
+            const row = document.createElement("tr");
+            row.className = strengthClass; // 👈 إضافة كلاس اللون للصف/البطاقة
                 
                 // إضافة سمة (data-label) لكل td لدعم شكل البطاقات في الموبايل
                 row.innerHTML = `
@@ -2927,19 +3030,101 @@ function applyStarsFeature(enabled) {
         this.loadHiveForEdit = async (id) => {
             const hives = await this.loadHives();
             const hive = hives.find(h => h.hiveId === id);
-            if (hive) {
-                getElement("hive-id").value = hive.hiveId;
-                getElement("frames").value = hive.frames;
-                getElement("queen-status").value = hive.queenStatus;
-                getElement("queen-year").value = hive.queenYear;
-                getElement("queen-marked").value = hive.queenMarked;
-                getElement("notes").value = ""; 
-                getElement("honey-frames").value = hive.honeyFrames || 0;
-                getElement("pollen-frames").value = hive.pollenFrames || 0;
+            if (!hive) return;
 
-                this.showMainTab('hives-tab');
-                getElement("notes").focus();
-            }
+            // بناء واجهة التعديل السريع داخل النافذة المنبثقة
+            const html = `
+                <div class="form-grid" style="text-align: right; margin-top: 15px;">
+                    <div>
+                        <label>عدد الإطارات:</label>
+                        <div class="input-group">
+                            <button type="button" onclick="changeValue('edit-frames', -1)">-</button>
+                            <input type="number" id="edit-frames" min="1" max="10" value="${hive.frames}">
+                            <button type="button" onclick="changeValue('edit-frames', 1)">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>حالة الملكة:</label>
+                        <select id="edit-queen-status">
+                            <option value="ملكة" ${hive.queenStatus === 'ملكة' ? 'selected' : ''}>بها ملكة</option>
+                            <option value="بدون ملكة" ${hive.queenStatus === 'بدون ملكة' ? 'selected' : ''}>بدون ملكة</option>
+                            <option value="مكذبة" ${hive.queenStatus === 'مكذبة' ? 'selected' : ''}>مكذبة</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>إطارات عسل مختوم:</label>
+                        <div class="input-group">
+                            <button type="button" onclick="changeValue('edit-honey', -1)">-</button>
+                            <input type="number" id="edit-honey" min="0" value="${hive.honeyFrames || 0}">
+                            <button type="button" onclick="changeValue('edit-honey', 1)">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>إطارات كرس (خبز النحل):</label>
+                        <div class="input-group">
+                            <button type="button" onclick="changeValue('edit-pollen', -1)">-</button>
+                            <input type="number" id="edit-pollen" min="0" value="${hive.pollenFrames || 0}">
+                            <button type="button" onclick="changeValue('edit-pollen', 1)">+</button>
+                        </div>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label>إضافة ملاحظة جديدة (اختياري):</label>
+                        <textarea id="edit-notes" rows="2" placeholder="تم فحص الخلية..."></textarea>
+                    </div>
+                </div>
+            `;
+
+            showModal({
+                title: `✏️ تعديل سريع: خلية رقم ${hive.hiveId}`,
+                message: "",
+                customHTML: html,
+                confirmText: "حفظ السجل",
+                onConfirm: async () => {
+                    const frames = parseInt(getElement("edit-frames").value);
+                    if (isNaN(frames) || frames < 1) return showNotification("عدد الإطارات غير صالح.", "error");
+
+                    const record = {
+                        hiveId: hive.hiveId,
+                        siteId: this.siteId,
+                        date: new Date().toISOString(),
+                        frames: frames,
+                        queenStatus: getElement("edit-queen-status").value,
+                        queenYear: hive.queenYear, // الحفاظ على البيانات السابقة
+                        queenMarked: hive.queenMarked,
+                        notes: getElement("edit-notes").value.trim(),
+                        honeyFrames: parseInt(getElement("edit-honey").value) || 0,
+                        pollenFrames: parseInt(getElement("edit-pollen").value) || 0
+                    };
+
+                    // 1. الحفظ محلياً
+                    const newRecordId = await DBHelper.add("hives", record);
+                    record.recordId = newRecordId;
+                    
+                    // 2. إغلاق النافذة
+                    hideModal();
+                    
+                    // 3. التقاط موضع التمرير (Scroll Position) الحالي لمنع الشاشة من القفز
+                    const scrollContainer = document.querySelector('.content-area');
+                    const currentScroll = scrollContainer ? scrollContainer.scrollTop : 0;
+                    const bodyScroll = document.documentElement.scrollTop || document.body.scrollTop;
+                    
+                    // 4. تحديث الجدول الصامت
+                    this.refreshUI();
+                    
+                    // 5. تثبيت الشاشة في مكانها فوراً بعد التحديث
+                    setTimeout(() => {
+                        if (scrollContainer) scrollContainer.scrollTop = currentScroll;
+                        window.scrollTo(0, bodyScroll);
+                    }, 10);
+
+                    showNotification(`تم حفظ الفحص الجديد للخلية ${hive.hiveId}`, "success");
+
+                    // 6. المزامنة في الخلفية
+                    if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                        FirebaseHelper.saveItem("hives", newRecordId, record).catch(e => console.log("sync pending"));
+                    }
+                }
+            });
         };
 
         this.refreshUI = debounce(async () => {
@@ -4017,6 +4202,107 @@ async function endTutorial() {
         getElement("hive-strength-popup").classList.add("popup-hidden");
         if (currentStrengthChartInstance) currentStrengthChartInstance.destroy();
     };
+
+    // ==========================================
+    // نظام الإجراءات السريعة العائم (Floating Quick Actions)
+    // ==========================================
+    window.updateSelectionUI = function() {
+        const selectedCount = document.querySelectorAll(".hive-select-checkbox:checked").length;
+        const bar = document.getElementById("floating-selection-bar");
+        if (bar) {
+            if (selectedCount > 0) {
+                document.getElementById("selection-count-text").textContent = `تم تحديد ${selectedCount} خلايا`;
+                bar.classList.add("active");
+            } else {
+                bar.classList.remove("active");
+            }
+        }
+    };
+
+    // دالة عامة ومضمونة لإغلاق النافذة المنبثقة
+    window.closeCustomModal = function() {
+        const modal = document.getElementById("custom-modal");
+        if (modal) modal.style.display = "none";
+    };
+
+    window.addBulkReviewTask = async function(action) {
+        const selectedCheckboxes = document.querySelectorAll(".hive-select-checkbox:checked");
+        const activeManager = beehiveManager.getActive();
+        
+        if (selectedCheckboxes.length === 0) return;
+
+        let addedCount = 0;
+        for (const cb of selectedCheckboxes) {
+            const hiveNum = cb.dataset.hiveId;
+            const taskText = `📍 مراجعة الخلية رقم ${hiveNum}: تحتاج ${action}`;
+            
+            const taskData = { 
+                siteId: activeManager.siteId, 
+                text: taskText,
+                createdAt: new Date().toISOString()
+            };
+
+            // الحفظ المحلي
+            const id = await DBHelper.add("tasks", taskData);
+            taskData.id = id;
+
+            // الحفظ السحابي
+            if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+                FirebaseHelper.saveItem("tasks", id, taskData).catch(e => console.log("sync pending"));
+            }
+            addedCount++;
+        }
+
+        // تحديث قائمة المهام
+        activeManager.displayTasks();
+        showNotification(`تم تسجيل ${addedCount} مهام مراجعة (${action}) بنجاح.`, "info");
+        
+        // إزالة التحديد وإخفاء الشريط بعد الانتهاء
+        document.querySelectorAll(".hive-select-checkbox").forEach(cb => cb.checked = false);
+        window.updateSelectionUI();
+        
+        // إغلاق النافذة تلقائياً وبشكل مضمون بعد اكتمال الحفظ!
+        window.closeCustomModal();
+    };
+
+    window.showQuickActionsModal = function() {
+        const selectedCount = document.querySelectorAll(".hive-select-checkbox:checked").length;
+        if (selectedCount === 0) return;
+
+        const html = `
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                <button onclick="performQuickAction(1, 'تم إضافة شمع اساس.', 'frames', 0);" style="background: var(--success-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-plus"></i> شمع اساس</button>
+                <button onclick="performQuickAction(1, 'تم إضافة إطار ممطوط.', 'frames', 0);" style="background: var(--success-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-plus"></i> إطار ممطوط</button>
+                <button onclick="performQuickAction(1, 'تم إضافة إطار عسل.', 'honey', 1);" style="background: var(--success-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-plus"></i> إطار عسل</button>
+                <button onclick="performQuickAction(1, 'تم إضافة إطار كرس.', 'pollen', 1);" style="background: var(--success-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-plus"></i> إطار كرس</button>
+                
+                <button onclick="performQuickAction(-1, 'تم سحب إطار شمع اساس.', 'frames', 0);" style="background: var(--danger-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-minus"></i> شمع اساس</button>
+                <button onclick="performQuickAction(-1, 'تم سحب إطار ممطوط.', 'frames', 0);" style="background: var(--danger-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-minus"></i> إطار ممطوط</button>
+                <button onclick="performQuickAction(-1, 'تم سحب إطار عسل.', 'honey', -1);" style="background: var(--danger-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-minus"></i> إطار عسل</button>
+                <button onclick="performQuickAction(-1, 'تم سحب إطار كرس.', 'pollen', -1);" style="background: var(--danger-color); padding: 10px; font-size: 0.9em;"><i class="fas fa-minus"></i> إطار كرس</button>
+                
+                <hr style="grid-column: 1 / -1; width: 100%; border-color: var(--border-color); margin: 5px 0;">
+                
+                <button onclick="addBulkReviewTask('شمع اساس');" style="background: var(--info-color); padding: 10px; font-size: 0.9em; grid-column: 1 / -1;"><i class="fas fa-flag"></i> علم لوضع شمع أساس</button>
+                <button onclick="addBulkReviewTask('تقسيم');" style="background: var(--warning-color); color: #333; padding: 10px; font-size: 0.9em; grid-column: 1 / -1;"><i class="fas fa-cut"></i> علم للتقسيم</button>
+            </div>
+        `;
+
+        showModal({
+            title: "⚡ إجراء سريع لـ (" + selectedCount + ") خلايا",
+            message: "اختر الإجراء ليتم تطبيقه فوراً:",
+            customHTML: html,
+            showConfirm: false,
+            cancelText: "إلغاء"
+        });
+    };
+
+    // مراقبة النقر على أي مكان في الجدول لتحديث الشريط العائم بصمت
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('hive-select-checkbox') || e.target.id === 'select-all-hives') {
+            window.updateSelectionUI();
+        }
+    });
 
     // نقطة الدخول الرئيسية
     window.onload = async function () {
