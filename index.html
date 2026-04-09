@@ -2016,21 +2016,34 @@ window.togglePassword = function(inputId, icon) {
         if (Object.keys(comparisonCharts).length > 0) Object.values(comparisonCharts).forEach(chart => chart.update());
     }
 
+function applyStarsFeature(enabled) {
+        document.querySelectorAll(".star-feature").forEach(el => {
+            if (enabled) {
+                el.classList.remove("feature-hidden");
+            } else {
+                el.classList.add("feature-hidden");
+            }
+        });
+    }
+
+    function applyRecsFeature(enabled) {
+        document.querySelectorAll(".recommendation-feature").forEach(el => {
+            if (enabled) {
+                el.classList.remove("feature-hidden");
+            } else {
+                el.classList.add("feature-hidden");
+            }
+        });
+    }
+
     async function toggleTheme() {
         const theme = document.body.classList.contains("dark-mode") ? "light" : "dark";
         await DBHelper.put("settings", { key: "theme", value: theme });
         applyTheme(theme);
         
-        // مزامنة الإعدادات مع السحابة إذا كان المستخدم مسجل الدخول
+        // تم الإصلاح: رفع الإعداد فقط بدلاً من المزامنة الشاملة
         if (FirebaseHelper.currentUser) {
-            FirebaseHelper.syncLocalToCloud();
-        }
-    }
-
-    function applyStarsFeature(enabled) {
-        document.querySelectorAll(".star-feature").forEach(el => el.classList.toggle("feature-hidden", !enabled));
-        if (!enabled && getElement("stars-tab").classList.contains("active")) {
-            beehiveManager.getActive().showMainTab("dashboard-tab");
+            FirebaseHelper.saveItem("settings", "theme", { key: "theme", value: theme });
         }
     }
 
@@ -2039,13 +2052,10 @@ window.togglePassword = function(inputId, icon) {
         await DBHelper.put("settings", { key: "starsFeature", value: enabled });
         applyStarsFeature(enabled);
         
+        // تم الإصلاح: رفع الإعداد فقط
         if (FirebaseHelper.currentUser) {
-            FirebaseHelper.syncLocalToCloud();
+            FirebaseHelper.saveItem("settings", "starsFeature", { key: "starsFeature", value: enabled });
         }
-    }
-
-    function applyRecsFeature(enabled) {
-        document.querySelectorAll(".recommendation-feature").forEach(el => el.classList.toggle("feature-hidden", !enabled));
     }
 
     async function toggleRecsFeature() {
@@ -2054,8 +2064,9 @@ window.togglePassword = function(inputId, icon) {
         applyRecsFeature(enabled);
         if (beehiveManager.getActive()) beehiveManager.getActive().refreshUI();
         
+        // تم الإصلاح: رفع الإعداد فقط
         if (FirebaseHelper.currentUser) {
-            FirebaseHelper.syncLocalToCloud();
+            FirebaseHelper.saveItem("settings", "recsFeature", { key: "recsFeature", value: enabled });
         }
     }
 
@@ -2931,7 +2942,8 @@ window.togglePassword = function(inputId, icon) {
             }
         };
 
-        this.refreshUI = async () => {
+        // تم الإصلاح: استخدام debounce لمنع رفرفة الشاشة عند كثرة التحديثات
+        this.refreshUI = debounce(async () => {
             this.displayDashboard();
             this.displayHives();
             this.displayTasks();
@@ -2939,7 +2951,7 @@ window.togglePassword = function(inputId, icon) {
             const recsEnabled = (await DBHelper.get("settings", "recsFeature"))?.value;
             if (recsEnabled) generateSiteRecommendations(this);
             else getElement("site-recommendations-list").innerHTML = "";
-        };
+        }, 150); // الانتظار 150 جزء من الثانية لدمج التحديثات
 
         this.showMainTab = async (tabId) => {
             getElement("global-stats-view").style.display = "none";
