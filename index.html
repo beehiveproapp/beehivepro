@@ -662,6 +662,272 @@ button:active {
         .close-popup-btn { cursor: pointer; font-size: 1.5rem; font-weight: bold; color: #f59e0b; padding: 0 5px; }
         .popup-body { position: relative; }
         .popup-note { font-size: 0.8rem; color: #777; margin-top: 10px; text-align: center; }
+
+/* ==========================================
+   1. تحسينات UI/UX والفلاتر السريعة
+   ========================================== */
+.quick-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    scrollbar-width: none; /* إخفاء شريط التمرير */
+}
+.quick-filters::-webkit-scrollbar { display: none; }
+
+.filter-btn {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+.filter-btn:hover {
+    border-color: var(--header-alt-color);
+    color: var(--header-alt-color);
+    transform: translateY(-1px);
+}
+.filter-btn.active {
+    background-color: var(--header-alt-color);
+    color: white;
+    border-color: var(--header-alt-color);
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+/* ==========================================
+   2. تحويل الجدول إلى بطاقات (Responsive Cards) للموبايل
+   ========================================== */
+@media (max-width: 768px) {
+    .table-wrapper table, 
+    .table-wrapper thead, 
+    .table-wrapper tbody, 
+    .table-wrapper th, 
+    .table-wrapper td, 
+    .table-wrapper tr {
+        display: block;
+        width: 100%;
+    }
+    
+    /* إخفاء ترويسة الجدول بصرياً مع الاحتفاظ بها لقوارئ الشاشة */
+    .table-wrapper thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    /* تصميم الصف كبطاقة */
+    .table-wrapper tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px;
+        background: var(--bg-color);
+        box-shadow: 0 4px 10px var(--shadow-color);
+        position: relative;
+    }
+    
+    /* تصميم الخلايا داخل البطاقة */
+    .table-wrapper td {
+        border: none;
+        border-bottom: 1px dashed var(--border-color);
+        position: relative;
+        padding: 10px 10px 10px 40%; 
+        text-align: left;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+    
+    /* إضافة عناوين الأعمدة كعناصر وهمية (Pseudo-elements) */
+    .table-wrapper td::before {
+        content: attr(data-label);
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 35%;
+        white-space: nowrap;
+        font-weight: bold;
+        color: var(--header-color);
+        text-align: right;
+    }
+    
+    /* الخلية الأولى (مربع التحديد والرقم) */
+    .table-wrapper td:nth-child(1) {
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 5px;
+        justify-content: flex-start;
+        padding-right: 10px;
+    }
+    .table-wrapper td:nth-child(1)::before { display: none; }
+    
+    /* خلية الملاحظات - إصلاح العلامة المائية للموبايل */
+    .table-wrapper td.notes-cell {
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    .table-wrapper td.notes-cell pre {
+        text-align: right;
+        width: 100%;
+    }
+    .notes-cell::before { display: none; } /* إخفاء الرقم المائي في الموبايل لعدم التشويش */
+    
+    /* الخلية الأخيرة (الأزرار) */
+    .table-wrapper td:last-child {
+        border-bottom: 0;
+        justify-content: center;
+        padding: 10px 0 0 0;
+        margin-top: 5px;
+    }
+    .table-wrapper td:last-child::before { display: none; }
+    
+    /* تعديل عناصر داخل الخلايا */
+    .health-score { margin-left: 0; margin-right: auto; }
+}
+
+/* ==========================================
+   1. تحسين بطاقات لوحة التحكم والإحصائيات
+   ========================================== */
+.kpi-card, .upcoming-card, .star-season-card, .settings-card, .recommendation-card {
+    background: linear-gradient(145deg, var(--content-bg-color), var(--bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 16px; /* زوايا أكثر استدارة ونعومة */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* تأثير التحويم (Hover) للبطاقات */
+.kpi-card:hover, .upcoming-card:hover, .chart-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px var(--shadow-color);
+}
+
+/* تحسين خطوط وألوان القيم داخل البطاقات */
+.kpi-card h3 {
+    font-size: 1rem;
+    opacity: 0.8;
+    margin-bottom: 15px;
+}
+.kpi-value {
+    font-size: 42px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+}
+
+/* ==========================================
+   2. تحسين بطاقات الخلايا لتكون شديدة الضغط (Ultra Compact)
+   ========================================== */
+@media (max-width: 768px) {
+    .table-wrapper table { min-width: 100% !important; }
+    .table-wrapper table, .table-wrapper thead, .table-wrapper tbody, .table-wrapper th, .table-wrapper td, .table-wrapper tr { display: block; width: 100%; }
+    .table-wrapper thead tr { position: absolute; top: -9999px; left: -9999px; }
+    
+    .table-wrapper tr {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px; /* تقليل المسافات بين العناصر بشكل كبير */
+        margin-bottom: 10px; /* تقليل المسافة بين البطاقات */
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 8px; /* حشوة داخلية أصغر للبطاقة ككل */
+        background: linear-gradient(145deg, var(--content-bg-color), var(--bg-color));
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .table-wrapper td {
+        border: none;
+        padding: 4px 8px; /* حشوة صغيرة جداً للحقول */
+        display: flex;
+        flex-direction: row; /* إعادة العنوان والقيمة في نفس السطر لتوفير المساحة الرأسية */
+        align-items: center; 
+        justify-content: space-between; /* إبعاد العنوان عن القيمة للترتيب */
+        background: rgba(0,0,0,0.02); /* تمييز خفيف جداً لكل حقل */
+        border-radius: 6px;
+        font-size: 0.85rem; /* تصغير الخط قليلاً */
+        min-height: auto;
+    }
+    
+    .table-wrapper td::before {
+        position: static;
+        transform: none;
+        width: auto;
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        font-weight: normal;
+        margin-right: 0;
+    }
+    
+    /* 1. ترويسة البطاقة (مربع التحديد ورقم الخلية) */
+    .table-wrapper td:nth-child(1) {
+        grid-column: 1 / -1; 
+        flex-direction: row-reverse; /* الرقم يمين والمربع يسار */
+        background: transparent;
+        padding: 0 4px 6px 4px;
+        margin-bottom: 2px;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 0;
+    }
+    .table-wrapper td:nth-child(1)::before { display: none; }
+    .table-wrapper td:nth-child(1) .mobile-only-id { margin-right: 0 !important; }
+    
+    /* 2. إخفاء خلية الرقم القديمة */
+    .table-wrapper td:nth-child(2) { display: none; }
+
+    /* 7. خلية الملاحظات */
+    .table-wrapper td.notes-cell {
+        grid-column: 1 / -1;
+        flex-direction: column; /* الملاحظات تبقى عمودية لتأخذ راحتها */
+        align-items: flex-start;
+        background: transparent;
+        padding: 4px;
+    }
+    .table-wrapper td.notes-cell pre {
+        text-align: right;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px dashed var(--border-color);
+        padding: 6px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        margin: 4px 0 0 0;
+        max-height: 45px; /* تقليل أقصى ارتفاع للملاحظات */
+        overflow-y: auto;
+    }
+    .notes-cell::before { display: block; } 
+    
+    /* 8. الأزرار السفلية */
+    .table-wrapper td:last-child {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        justify-content: space-between;
+        background: transparent;
+        border-top: 1px dashed var(--border-color);
+        padding: 8px 0 0 0;
+        margin-top: 2px;
+        gap: 6px; /* تقليل المسافة بين الأزرار */
+        border-radius: 0;
+    }
+    .table-wrapper td:last-child::before { display: none; }
+    
+    .table-wrapper td:last-child button {
+        flex: 1;
+        padding: 6px 0; /* أزرار أنحف لتوفير المساحة */
+        font-size: 1rem;
+        margin: 0;
+        border-radius: 8px;
+    }
+    
+    /* تصغير علامة درجة الصحة */
+    .health-score { margin: 0; padding: 2px 8px; font-size: 0.85rem; border-radius: 4px;}
+}
     </style>
 </head>
 <body>
@@ -786,10 +1052,9 @@ button:active {
                         <div class="kpi-card"><h3>خلايا ضعيفة (<4 إطارات)</h3><div id="db-weak-hives" class="kpi-value weak">0%</div></div>
                     </div>
                     
-                    <div id="site-recommendations-container" class="recommendation-feature" style="margin-top: 20px;">
-                        <h3><i class="fas fa-lightbulb"></i> التوصيات الإدارية الآلية</h3>
-                        <div id="site-recommendations-list"></div>
-                    </div>
+<div id="site-recommendations-container" class="recommendation-feature" style="margin-top: 20px;">
+    <h3><i class="fas fa-robot"></i> المستشار الذكي</h3> <div id="site-recommendations-list"></div>
+</div>
 
                     <div class="dashboard-grid" style="margin-top: 20px;">
                         <div class="chart-container">
@@ -889,9 +1154,13 @@ button:active {
                     <button onclick="beehiveManager.getActive().saveHive()"><i class="fas fa-save"></i> إضافة سجل فحص جديد</button>
                     <hr>
                     <h2><i class="fas fa-archive"></i> قائمة الخلايا (آخر فحص)</h2>
-                    <div class="hive-list-controls">
-                        <input type="text" id="hive-filter-input" placeholder="🔎 بحث بالرقم أو في الملاحظات...">
-                    </div>
+<div class="hive-list-controls" style="flex-direction: column; align-items: stretch; gap: 10px;">
+    <input type="text" id="hive-filter-input" placeholder="🔎 بحث بالرقم أو في الملاحظات...">
+<div class="quick-filters" id="quick-filters-container">
+    <button class="filter-btn" onclick="beehiveManager.getActive().sortTable(0)"><i class="fas fa-sort-numeric-down"></i> فرز برقم الخلية</button>
+    <button class="filter-btn" onclick="beehiveManager.getActive().sortTable(1)"><i class="fas fa-sort-amount-down"></i> فرز بعدد الإطارات</button>
+</div>
+</div>
                     <div class="table-wrapper">
                         <table>
                             <thead>
@@ -933,11 +1202,10 @@ button:active {
                             <div id="health-trend-chart" class="chart-wrapper"><canvas id="healthTrendCanvas"></canvas></div>
                             <div id="queen-age-chart" class="chart-wrapper"><canvas id="queenAgeCanvas"></canvas></div>
                         </div>
-                        <div class="recommendations-section">
-                            <h3><i class="fas fa-lightbulb"></i> التوصيات الإدارية (لخلية محددة)</h3>
-                            <div id="recommendations-list"><p style="text-align: center; color: var(--text-color);">جاري تحليل البيانات...</p></div>
-                        </div>
-                    </div>
+<div class="recommendations-section">
+    <h3><i class="fas fa-robot"></i> المستشار الذكي (لخلية محددة)</h3> <div id="recommendations-list"><p style="text-align: center; color: var(--text-color);">جاري تحليل البيانات...</p></div>
+</div>
+</div>
                 </div>
 
                 <div id="settings-tab" class="tab-content">
@@ -960,15 +1228,14 @@ button:active {
                             </label>
                         </div>
                     </div>
-                     <div class="settings-card">
-                         <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <label for="recs-feature-checkbox"><i class="fas fa-lightbulb"></i> التوصيات الإدارية الآلية</label>
-                             <label class="toggle-switch">
-                                <input type="checkbox" id="recs-feature-checkbox" onchange="toggleRecsFeature()">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
+<div class="settings-card">
+     <div style="display:flex; align-items:center; justify-content:space-between;">
+        <label for="recs-feature-checkbox"><i class="fas fa-robot"></i> المستشار الذكي</label> <label class="toggle-switch">
+            <input type="checkbox" id="recs-feature-checkbox" onchange="toggleRecsFeature()">
+            <span class="slider"></span>
+        </label>
+    </div>
+</div>
                     <div class="settings-card">
                         <h3><i class="fas fa-cloud"></i> المزامنة السحابية</h3>
                         <div id="current-sync-status" class="auth-status signed-out" style="margin-bottom: 10px;">
@@ -1384,6 +1651,22 @@ const FirebaseHelper = {
             await DBHelper.put(store, data);
         };
 
+        // تهيئة الفلاتر السريعة
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // إزالة التفعيل عن كل الأزرار
+                filterBtns.forEach(b => b.classList.remove('active'));
+                // تفعيل الزر المضغوط
+                e.target.classList.add('active');
+                // تحديث المتغير وإعادة عرض الخلايا
+                currentQuickFilter = e.target.getAttribute('data-filter');
+                if(beehiveManager.getActive()) {
+                    beehiveManager.getActive().displayHives();
+                }
+            });
+        });
+
         // الاستماع للمواقع
         const unsubSites = db.collection("users").doc(userId).collection("sites").onSnapshot(async (snapshot) => {
             let needsRefresh = false;
@@ -1502,6 +1785,7 @@ const FirebaseHelper = {
     let chartsInitialized = false;
     let globalCharts = {};
     let comparisonCharts = {};
+let currentQuickFilter = 'all';
 
     const getElement = (id) => document.getElementById(id);
 // دالة لتبديل رؤية كلمة المرور
@@ -2091,68 +2375,106 @@ window.togglePassword = function(inputId, icon) {
     }
 
     // ==========================================
-    // نظام التوصيات الآلي
+    // 🧠 نظام المستشار الذكي المتقدم جداً (إصدار 2026)
     // ==========================================
     function generateHiveRecommendations(manager, history) {
         const listDiv = getElement("recommendations-list");
         listDiv.innerHTML = "";
-        if (history.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">لا توجد بيانات كافية للتحليل.</p>';
+        
+        if (history.length === 0) {
+            return listDiv.innerHTML = '<div class="recommendation-card info" style="text-align:center;"><i class="fas fa-robot fa-2x" style="color:var(--info-color); margin-bottom:10px;"></i><br>أحتاج لبعض السجلات لأبدأ التحليل السحري لهذه الخلية.</div>';
+        }
 
         const recommendations = [];
-        let latest = history[history.length - 1];
-
-        if (history.length > 1) {
-            const season = getCurrentStarSeason();
-            const isSpring = season?.name === "بدء التوسعة الربيعية";
-            const queenAge = latest.queenYear ? (new Date().getFullYear() - parseInt(latest.queenYear)) : 0;
-
-            if (isSpring && latest.frames >= 7 && queenAge >= 1) {
-                const twoWeeksAgo = new Date(new Date().getTime() - 1296000000);
-                const oldRec = history.slice().reverse().find(r => new Date(r.date) <= twoWeeksAgo);
-                if (oldRec) {
-                    const growth = latest.frames - oldRec.frames;
-                    if (growth >= 3) {
-                        recommendations.push({ type: "danger", title: "🚨 توقع التطريد", text: `تنبيه: خطر تطريد مرتفع! الخلية قوية، الملكة ليست صغيرة، والنمو سريع (+${growth} إطارات في آخر أسبوعين). افحص بيوت الملكات فوراً.` });
-                    }
-                }
-            }
-        }
-
-        if (history.length >= 3) {
-            const last3 = history.slice(-3);
-            const s1 = manager.calculateHealthScore(last3[2]);
-            const s2 = manager.calculateHealthScore(last3[1]);
-            const s3 = manager.calculateHealthScore(last3[0]);
-
-            if (s1 < s2 && s2 < s3 && (latest.honeyFrames || 0) < 2) {
-                recommendations.push({ type: "danger", title: "📉 توقع ضعف وانهيار الخلية", text: "تنبيه: الخلية في تدهور مستمر وصحة الطائفة تتناقص مع نقص حاد في المخزون. تحتاج لدعم فوري بالتغذية وإطارات حضنة لتجنب انهيارها." });
-            }
-        }
-
+        const latest = history[history.length - 1];
         const health = manager.calculateHealthScore(latest);
-        const { frames, honeyFrames = 0, pollenFrames = 0 } = latest;
-
-        if (honeyFrames > 5) recommendations.push({ type: "excess", title: "فائض كبير في العسل", text: `الخلية لديها ${honeyFrames} إطار عسل. يجب سحب الفائض فوراً للاستفادة منه وتوفير مساحة للملكة.` });
-        if (honeyFrames < 2) recommendations.push({ type: "deficit", title: "نقص في مخزون العسل", text: `الخلية لديها ${honeyFrames} إطار عسل فقط. يرجى التغذية فوراً لتجنب موت النحل جوعاً.` });
+        const { frames, honeyFrames = 0, pollenFrames = 0, queenYear, queenStatus, notes = "" } = latest;
+        const currentSeason = getCurrentStarSeason();
         
-        if (pollenFrames > 3) recommendations.push({ type: "excess", title: "فائض في الكرس", text: `الخلية لديها ${pollenFrames} إطار كرس. يمكن استخدامه لدعم خلايا أخرى أضعف في المنحل.` });
-        if (pollenFrames < 1) recommendations.push({ type: "deficit", title: "نقص في مخزون الكرس", text: `الخلية لديها ${pollenFrames} إطار كرس فقط. يرجى توفير بدائل حبوب اللقاح لدعم الحضنة.` });
+        // --- 1. محرك تحليل كفاءة الملكة (Queen Performance AI) ---
+        let queenScore = 100;
+        const qAge = queenYear ? (new Date().getFullYear() - parseInt(queenYear)) : 0;
+        if (qAge >= 2) queenScore -= 30; // خصم للعمر
+        if (frames < 4) queenScore -= 20; // خصم لضعف الحضنة
+        if (history.length >= 2) {
+            const prev = history[history.length - 2];
+            const growth = frames - prev.frames;
+            if (growth > 1) queenScore = Math.min(100, queenScore + 20); // مكافأة للنمو السريع
+            else if (growth < 0) queenScore -= 15; // خصم للتراجع
+        }
+        if (queenStatus !== "ملكة") queenScore = 0;
 
-        if (health < 60) recommendations.push({ type: "danger", title: "صحة الخلية ضعيفة", text: `درجة الصحة الحالية ${health}%. يرجى مراجعة سجل الملاحظات للبحث عن أمراض أو آفات.` });
-        if (frames < 4) recommendations.push({ type: "warning", title: "الخلية ضعيفة جداً", text: `تحتوي على ${frames} إطارات. يوصى بتغذية مكثفة أو ضمها لخلية أخرى.` });
+        // --- 2. محرك قراءة النصوص والسلوك (NLP Engine) ---
+        const textAnalysis = notes.toLowerCase();
+        const isAggressive = textAnalysis.includes("شرس") || textAnalysis.includes("هجوم");
+        const isCalm = textAnalysis.includes("هادئ");
+        const hasDiseases = textAnalysis.includes("فاروا") || textAnalysis.includes("مرض") || textAnalysis.includes("تكلس");
+
+        // بناء التوصيات بناءً على الأولويات (Critical, High, Strategic, Info)
+
+        // 🔴 الحالات الحرجة (تدخل فوري اليوم)
+        if (queenStatus === "مكذبة") {
+            recommendations.push({ type: "danger", icon: "fa-skull-crossbones", title: "توقف! خلية مكذبة", text: "النظام يرفض استمرار هذه الخلية. انفض النحل بعيداً لمسافة 50 متراً وأنقذ الصناديق والإطارات فوراً." });
+        } else if (queenStatus === "بدون ملكة") {
+            recommendations.push({ type: "danger", icon: "fa-exclamation-triangle", title: "طوارئ: طائفة يتيمة", text: "كل يوم يمر يقربها من التكذيب. أضف ملكة ملقحة أو ضمها لأقرب خلية قوية لإنقاذ جيش الشغالات." });
+        }
+        if (honeyFrames === 0 && frames > 2) {
+            recommendations.push({ type: "danger", icon: "fa-bone", title: "مجاعة حتمية", text: "الخلية تستنزف آخر قطرة طاقة. قدم محلول سكري مركز (1:1) أو عجينة فوندان اليوم وإلا ستموت." });
+        }
+        if (hasDiseases) {
+             recommendations.push({ type: "danger", icon: "fa-bug", title: "رصد وباء", text: "تم تسجيل إصابة مرضية/فاروا. استخدم العلاج المناسب فوراً وركز على الإطارات المفتوحة." });
+        }
+
+        // 🟠 التحذيرات والتوقعات (تدخل خلال أسبوع)
+        if (history.length >= 3 && queenStatus === "ملكة") {
+             const prev1 = history[history.length - 2];
+             const prev2 = history[history.length - 3];
+             if (frames < prev1.frames && prev1.frames < prev2.frames) {
+                 recommendations.push({ type: "warning", icon: "fa-chart-line-down", title: "انهيار تدريجي مرصود", text: "المنحنى في هبوط لـ 3 فحوصات متتالية! تأكد من عدم وجود (دبور، سرقة، أو ملكة فاشلة)." });
+             }
+        }
+        if (currentSeason && currentSeason.name.includes("بدء التوسعة") && frames >= 7 && qAge > 0) {
+             const honeyPressure = honeyFrames > 4 ? "، ويوجد ضغط عسل يضيق على الملكة" : "";
+             recommendations.push({ type: "warning", icon: "fa-wind", title: "خوارزمية التطريد تطلق إنذاراً", text: `الخلية قوية والملكة ليست جديدة${honeyPressure}. نسبة التطريد تتجاوز 80%. قم بالتقسيم أو رفع عاسلة فوراً.` });
+        }
+
+        // 🔵 توجيهات استراتيجية واقتصادية (إدارة ذكية)
+        if (queenStatus === "ملكة") {
+            let qHtml = `أداء الملكة مقدر بـ <b>${queenScore}%</b>. `;
+            if (queenScore >= 80) {
+                 qHtml += "هذه الملكة (نخبة)، فكر في التربية منها وأخذ يرقات لإنتاج ملكات جديدة للمنحل.";
+                 recommendations.push({ type: "info", icon: "fa-crown", title: "جينات ممتازة مرصودة", text: qHtml });
+            } else if (queenScore < 50) {
+                 qHtml += "ملكة غير منتجة وتستهلك موارد المنحل عبثاً. ضعها في جدول (الاستبدال أو الإعدام) للموسم القادم.";
+                 recommendations.push({ type: "warning", icon: "fa-sync-alt", title: "قرار استبدال استراتيجي", text: qHtml });
+            }
+        }
+
+        if (frames >= 8 && honeyFrames >= 5 && pollenFrames >= 2) {
+             recommendations.push({ type: "success", icon: "fa-medal", title: "جاهزية اقتصادية قصوى", text: "توازن مثالي بين الجيش والمؤونة. الخلية جاهزة تماماً لقطفة العسل القادمة. ركز فقط على التوسعة الرأسية (إضافة طوابق)." });
+        }
         
-        if (latest.queenStatus === "بدون ملكة") recommendations.push({ type: "danger", title: "الخلية يتيمة!", text: "يجب إضافة ملكة جديدة أو بيت ملكي أو ضمها فوراً قبل أن تكذب." });
-        if (latest.queenStatus === "مكذبة") recommendations.push({ type: "danger", title: "توقف: الخلية مكذبة!", text: "يجب نفض النحل بعيداً وضم الخلية لخلية قوية لإنقاذ النحل المتبقي." });
+        if (isAggressive) recommendations.push({ type: "info", icon: "fa-shield-alt", title: "سلوك عدواني", text: "الذكاء الاصطناعي لاحظ تسجيلك لطباع شرسة. هذه الجينات مزعجة في الإدارة، فكر بتغيير السلالة تدريجياً." });
 
-        const queenAgeYears = (new Date()).getFullYear() - (latest.queenYear ? parseInt(latest.queenYear) : (new Date()).getFullYear());
-        if (queenAgeYears >= 2) recommendations.push({ type: "info", title: "الاستعداد لتغيير الملكة", text: `عمر الملكة ${queenAgeYears} سنوات. يفضل تغييرها في الموسم القادم لزيادة النشاط.` });
-        
-        if (frames >= 8 && health > 80) recommendations.push({ type: "success", title: "الخلية قوية ومزدهرة", text: "هذه الخلية ممتازة. يمكن التفكير في تقسيمها أو إضافة عاسلة لجمع العسل." });
+        if (recommendations.length === 0) {
+            recommendations.push({ type: "success", icon: "fa-check-double", title: "انسجام تام", text: "معادلة الخلية (حضنة/عسل/عمر الملكة) في أفضل حالاتها الممكنة حالياً." });
+        }
 
-        if (recommendations.length === 0) recommendations.push({ type: "success", title: "الخلية بحالة جيدة ومستقرة", text: "لا توجد ملاحظات أو إجراءات عاجلة مطلوبة." });
-
+        // طباعة النتائج بتصميم 2026 المبهر
         recommendations.forEach(rec => {
-            listDiv.innerHTML += `<div class="recommendation-card ${rec.type}"><h4>${rec.title}</h4><p>${rec.text}</p></div>`;
+            // تصميم شريط التقدم لو كان هناك تقييم للملكة
+            let extraHTML = "";
+            if (rec.title.includes("جينات") || rec.title.includes("استبدال")) {
+                 extraHTML = `<div style="background: rgba(0,0,0,0.1); border-radius:10px; height:6px; margin-top:8px; overflow:hidden;"><div style="width:${queenScore}%; background:var(--header-color); height:100%;"></div></div>`;
+            }
+
+            listDiv.innerHTML += `
+            <div class="recommendation-card ${rec.type}" style="position:relative; padding-right: 45px; overflow:hidden;">
+                <div style="position:absolute; right:10px; top:15px; font-size:1.5rem; opacity:0.8;"><i class="fas ${rec.icon}"></i></div>
+                <h4 style="margin-bottom:5px;">${rec.title}</h4>
+                <p style="font-size:0.9rem; margin:0; line-height:1.5;">${rec.text}</p>
+                ${extraHTML}
+            </div>`;
         });
     }
 
@@ -2160,28 +2482,96 @@ window.togglePassword = function(inputId, icon) {
         const listDiv = getElement("site-recommendations-list");
         listDiv.innerHTML = "";
         const hives = await manager.loadHives();
-        if (hives.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">لا توجد خلايا في هذا الموقع لتقديم توصيات عامة.</p>';
+        const allHistory = await manager.loadHistory();
+        
+        if (hives.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">بانتظار بيانات الموقع لإنشاء الخرائط التحليلية.</p>';
 
         const recommendations = [];
         const count = hives.length;
         
-        const weakCount = hives.filter(h => h.frames < 4).length;
-        if (weakCount / count > 0.3) recommendations.push({ type: "warning", title: "ضعف عام في المنحل", text: `يوجد ${weakCount} خلية ضعيفة (${Math.round(weakCount / count * 100)}%). يوصى ببدء برنامج تغذية عام ودعم الخلايا الضعيفة بإطارات حضنة من القوية.` });
+        // --- محرك تحليل الموقع الذكي (Site-wide AI) ---
+        
+        // 1. حساب مؤشر قوة الموقع العام (Site Vigor Index)
+        let totalScore = 0;
+        let totalHoney = 0;
+        let strongHives = [], weakHives = [];
+        
+        hives.forEach(h => {
+            totalScore += manager.calculateHealthScore(h);
+            totalHoney += (h.honeyFrames || 0);
+            if (h.frames >= 7) strongHives.push(h.hiveId);
+            if (h.frames <= 3) weakHives.push(h.hiveId);
+        });
+        
+        const avgHealth = Math.round(totalScore / count);
+        const avgHoney = (totalHoney / count).toFixed(1);
 
-        const queenlessCount = hives.filter(h => h.queenStatus !== "ملكة").length;
-        if (queenlessCount / count > 0.2) recommendations.push({ type: "danger", title: "مشاكل في التطريد أو فقدان الملكات", text: `يوجد ${queenlessCount} خلية بدون ملكة أو مكذبة. يجب التدخل السريع بإضافة ملكات أو ضم الخلايا.` });
+        // 2. خوارزمية التوزيع الذكي للموارد (Resource Balancing)
+        if (strongHives.length >= 2 && weakHives.length >= 2) {
+             recommendations.push({ 
+                 type: "info", icon: "fa-random", 
+                 title: "⚖️ خطة توازن (Cross-Balance)", 
+                 text: `يوجد تفاوت كبير. الذكاء الاصطناعي يقترح: اسحب إطار حضنة مغلق من الخلايا (${strongHives.slice(0,3).join(',')}) وادعم بها الخلايا الضعيفة (${weakHives.slice(0,3).join(',')}) لرفع إنتاجية المنحل ككل بنسبة 30%.` 
+             });
+        }
 
-        const oldQueenCount = hives.filter(h => h.queenYear && (new Date().getFullYear() - parseInt(h.queenYear) >= 2)).length;
-        if (oldQueenCount / count > 0.4) recommendations.push({ type: "info", title: "كثرة الملكات كبيرة السن", text: `${Math.round(oldQueenCount / count * 100)}% من ملكات المنحل عمرها سنتان أو أكثر. يفضل التخطيط لحملة تغيير ملكات لزيادة الإنتاجية.` });
+        // 3. تحليل الانتشار الوبائي المكاني (Epidemic Radar)
+        const recentRecords = allHistory.filter(r => (new Date() - new Date(r.date)) <= 14 * 24 * 60 * 60 * 1000);
+        let varroaInfected = new Set();
+        recentRecords.forEach(r => {
+            if (r.notes && (r.notes.includes('فاروا') || r.notes.includes('مرض'))) varroaInfected.add(r.hiveId);
+        });
 
-        const totalHoney = hives.reduce((sum, h) => sum + (h.honeyFrames || 0), 0);
-        const avgHoney = count > 0 ? totalHoney / count : 0;
-        if (avgHoney < 1.5) recommendations.push({ type: "deficit", title: "نقص عام في مخزون العسل", text: `متوسط مخزون العسل في الخلايا منخفض (${avgHoney.toFixed(1)} إطار). يجب المراقبة والتفكير في تغذية تكميلية إذا استمر النقص.` });
+        if (varroaInfected.size >= 3) {
+            recommendations.push({ 
+                type: "danger", icon: "fa-biohazard", 
+                title: "🔴 رادار الأوبئة: خطر تفشي", 
+                text: `تحذير: تم رصد (أمراض/فاروا) في ${varroaInfected.size} خلايا خلال الأسبوعين الماضيين. هذا مؤشر لانتشار وبائي قادم، ابدأ مكافحة جماعية للمنحل بأكمله الليلة.` 
+            });
+        }
 
-        if (recommendations.length === 0) recommendations.push({ type: "success", title: "المنحل في حالة جيدة ومستقرة", text: "لا توجد مشاكل عامة تتطلب تدخلاً عاجلاً. استمر في المراقبة الدورية." });
+        // 4. تقييم الأمن الغذائي للموقع (Food Security)
+        if (avgHoney < 1.5) {
+             recommendations.push({ 
+                 type: "deficit", icon: "fa-leaf", 
+                 title: "🍂 إعلان حالة جفاف رعوي", 
+                 text: `متوسط العسل (${avgHoney} إطار/خلية). الموقع لا يوفر رحيقاً كافياً لدعم هذا العدد من الخلايا. فكر جدياً في (الترحيل) لمكان آخر أو ابدأ بالتغذية السكرية المفتوحة.` 
+             });
+        } else if (avgHoney > 4) {
+             recommendations.push({ 
+                 type: "excess", icon: "fa-tint", 
+                 title: "🍯 فيض رحيقي ممتاز", 
+                 text: `المرعى حول الموقع غزير جداً (متوسط المخزون ${avgHoney}). استغل الفرصة وركب العاسلات (الطوابق) لجمع أكبر قدر من العسل.` 
+             });
+        }
+
+        // 5. تقرير صحة الموقع الشامل
+        let healthColor = avgHealth > 75 ? "var(--success-color)" : (avgHealth > 50 ? "var(--warning-color)" : "var(--danger-color)");
+        let healthIcon = avgHealth > 75 ? "fa-heartbeat" : "fa-heart-broken";
+        
+        listDiv.innerHTML += `
+            <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 15px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h4 style="margin:0 0 5px 0;"><i class="fas fa-satellite"></i> تقييم ذكاء الموقع</h4>
+                    <p style="margin:0; font-size:0.85rem; color:#7f8c8d;">مؤشر الحيوية العام</p>
+                </div>
+                <div style="font-size:2rem; font-weight:bold; color:${healthColor};">
+                    ${avgHealth}% <i class="fas ${healthIcon}" style="font-size:1.5rem;"></i>
+                </div>
+            </div>
+        `;
+
+        if (recommendations.length === 0) {
+             recommendations.push({ type: "success", icon: "fa-robot", title: "منظومة مثالية", text: "لم يرصد الرادار أي تهديدات. إدارة الموقع تسير بكفاءة تشغيلية ممتازة." });
+        }
 
         recommendations.forEach(rec => {
-            listDiv.innerHTML += `<div class="recommendation-card ${rec.type}"><h4>${rec.title}</h4><p>${rec.text}</p></div>`;
+            listDiv.innerHTML += `
+            <div class="recommendation-card ${rec.type}" style="position:relative; padding-right: 45px; overflow:hidden;">
+                <div style="position:absolute; right:10px; top:15px; font-size:1.5rem; opacity:0.8;"><i class="fas ${rec.icon}"></i></div>
+                <h4 style="margin-bottom:5px;">${rec.title}</h4>
+                <p style="font-size:0.9rem; margin:0; line-height:1.5;">${rec.text}</p>
+            </div>`;
         });
     }
 
@@ -2346,66 +2736,89 @@ window.togglePassword = function(inputId, icon) {
             return `متوازن (${h}/${p})`;
         };
 
-this.displayHives = async () => {
-    const tbody = getElement("hives-table-body");
-    let hives = await this.loadHives();
-    const filter = getElement("hive-filter-input").value.toLowerCase();
-    
-    if (filter) {
-        hives = hives.filter(h => String(h.hiveId).includes(filter) || (h.notes && h.notes.toLowerCase().includes(filter)));
-    }
+        this.displayHives = async () => {
+            const tbody = getElement("hives-table-body");
+            let hives = await this.loadHives();
+            const filterText = getElement("hive-filter-input").value.toLowerCase();
+            
+            // 1. تطبيق فلتر البحث النصي
+            if (filterText) {
+                hives = hives.filter(h => String(h.hiveId).includes(filterText) || (h.notes && h.notes.toLowerCase().includes(filterText)));
+            }
 
-    this.sortHives(hives, this.sortState.column, this.sortState.direction);
+            // 2. تطبيق الفلتر السريع (تحسين الأداء بتطبيق الفلاتر في خطوة واحدة)
+            if (currentQuickFilter !== 'all') {
+                hives = hives.filter(h => {
+                    switch (currentQuickFilter) {
+                        case 'strong': return h.frames >= 7;
+                        case 'medium': return h.frames >= 4 && h.frames <= 6;
+                        case 'weak': return h.frames < 4;
+                        case 'queen-issue': return h.queenStatus !== "ملكة";
+                        default: return true;
+                    }
+                });
+            }
 
-    const fragment = document.createDocumentFragment();
-    hives.forEach(hive => {
-        const score = this.calculateHealthScore(hive);
-        const hue = score * 0.01 * 120; // 0=red, 120=green
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><input type="checkbox" class="hive-select-checkbox" data-hive-id="${hive.hiveId}"></td>
-            <td>${hive.hiveId}</td>
-            <td>${hive.frames}</td>
-            <td><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
-            <td>${hive.queenStatus} (سنة ${hive.queenYear || "?"})</td>
-            <td>${this.getStockStatus(hive)}</td>
-<td class="notes-cell" data-hive-number="${hive.hiveId}"><pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em;">${hive.notes || "لا يوجد"}</pre></td>
-            <td class="actions-cell">
-                <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
-                <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
-                <button style="background-color: var(--danger-color);" onclick="beehiveManager.getActive().deleteHive(${hive.hiveId})" title="حذف"><i class="fas fa-trash-alt"></i></button>
-            </td>`;
-        fragment.appendChild(row);
-    });
-    tbody.innerHTML = "";
-    tbody.appendChild(fragment);
-    getElement("select-all-hives").checked = false;
+            // 3. ترتيب الخلايا
+            this.sortHives(hives, this.sortState.column, this.sortState.direction);
 
-    // ==========================================
-    // الكود الجديد: تحديث أيقونات الفرز في ترويسة الجدول
-    // ==========================================
-    const headers = document.querySelectorAll("th.sortable");
-    headers.forEach((th, index) => {
-        // إزالة الأيقونة القديمة إذا كانت موجودة
-        const oldIcon = th.querySelector('i');
-        if (oldIcon) oldIcon.remove();
+            // 4. بناء الـ DOM (استخدام DocumentFragment لأداء أفضل)
+            const fragment = document.createDocumentFragment();
+            hives.forEach(hive => {
+                const score = this.calculateHealthScore(hive);
+                const hue = score * 0.01 * 120; // 0=red, 120=green
+                const row = document.createElement("tr");
+                
+                // إضافة سمة (data-label) لكل td لدعم شكل البطاقات في الموبايل
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="hive-select-checkbox" data-hive-id="${hive.hiveId}">
+                        <span class="mobile-only-id" style="display:none; font-weight:bold; margin-right:8px; color:var(--header-color);">خلية رقم ${hive.hiveId}</span>
+                    </td>
+                    <td data-label="الرقم">${hive.hiveId}</td>
+                    <td data-label="الإطارات">${hive.frames}</td>
+                    <td data-label="صحة الخلية"><div class="health-score" style="background-color: hsl(${hue}, 80%, 40%);">${score}%</div></td>
+                    <td data-label="حالة الملكة">${hive.queenStatus} <span style="font-size:0.8em; opacity:0.8;">(سنة ${hive.queenYear || "?"})</span></td>
+                    <td data-label="المخزون">${this.getStockStatus(hive)}</td>
+                    <td data-label="ملاحظات" class="notes-cell" data-hive-number="${hive.hiveId}">
+                        <pre style="white-space: pre-wrap; max-height: 60px; overflow-y: auto; font-size: 0.9em; margin:0;">${hive.notes || "لا يوجد"}</pre>
+                    </td>
+                    <td data-label="إجراءات" class="actions-cell">
+                        <button onclick="beehiveManager.getActive().loadHiveForEdit(${hive.hiveId})" title="تعديل"><i class="fas fa-pencil-alt"></i></button>
+                        <button style="background-color: var(--info-color);" onclick="showHiveHistory(${hive.hiveId})" title="عرض السجل"><i class="fas fa-history"></i></button>
+                        <button style="background-color: var(--danger-color);" onclick="beehiveManager.getActive().deleteHive(${hive.hiveId})" title="حذف"><i class="fas fa-trash-alt"></i></button>
+                    </td>`;
+                
+                // إظهار رقم الخلية بجانب الـ Checkbox في وضع الموبايل فقط
+                if (window.innerWidth <= 768) {
+                    row.querySelector('.mobile-only-id').style.display = 'inline';
+                    row.children[1].style.display = 'none'; // إخفاء عمود الرقم الأصلي لتجنب التكرار
+                }
+                
+                fragment.appendChild(row);
+            });
+            
+            tbody.innerHTML = "";
+            tbody.appendChild(fragment);
+            getElement("select-all-hives").checked = false;
 
-        // إنشاء أيقونة جديدة بناءً على حالة الفرز
-        const icon = document.createElement('i');
-        icon.style.marginRight = "8px"; // مسافة بين النص والأيقونة
-        
-        if (this.sortState.column === index) {
-            // العمود مفروز حالياً: إظهار سهم لأعلى أو لأسفل بلون بارز
-            icon.className = this.sortState.direction === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
-            icon.style.color = "var(--header-alt-color)";
-        } else {
-            // العمود غير مفروز: إظهار أيقونة فرز باهتة
-            icon.className = "fas fa-sort";
-            icon.style.opacity = "0.3";
-        }
-        th.appendChild(icon);
-    });
-};
+            // تحديث أيقونات الفرز
+            const headers = document.querySelectorAll("th.sortable");
+            headers.forEach((th, index) => {
+                const oldIcon = th.querySelector('i');
+                if (oldIcon) oldIcon.remove();
+                const icon = document.createElement('i');
+                icon.style.marginRight = "8px";
+                if (this.sortState.column === index) {
+                    icon.className = this.sortState.direction === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
+                    icon.style.color = "var(--header-alt-color)";
+                } else {
+                    icon.className = "fas fa-sort";
+                    icon.style.opacity = "0.3";
+                }
+                th.appendChild(icon);
+            });
+        };
 
         this.calculateDashboardStats = async function () {
             const hives = await this.loadHives();
@@ -3268,9 +3681,9 @@ startTutorial
 
             if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
                 
-                if (event.target.closest('.table-wrapper') || event.target.closest('.main-tabs')) {
-                    return; 
-                }
+if (event.target.closest('.table-wrapper') || event.target.closest('.main-tabs') || event.target.closest('.hive-list-controls')) {
+    return; 
+}
 
                 const activeTab = document.querySelector('.tab-content.active');
                 if (!activeTab) return;
