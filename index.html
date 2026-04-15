@@ -1314,6 +1314,23 @@ button:active {
         </label>
     </div>
 </div>
+<div class="settings-card" id="ai-settings-container">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 15px;">
+        <label for="advisor-mode-selector"><i class="fas fa-brain"></i> محرك المستشار الذكي:</label>
+        <select id="advisor-mode-selector" onchange="updateAdvisorMode()" style="width: auto; margin: 0; padding: 5px; border-radius: 6px;">
+            <option value="traditional">تقليدي (قواعد ثابتة)</option>
+            <option value="ai">X10Think (ذكاء اصطناعي)</option>
+        </select>
+    </div>
+    <div id="ai-key-container" style="display: none; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+        <label for="ai-api-key" style="font-size: 0.9em; display: block; margin-bottom: 5px;">مفتاح Gemini API:</label>
+        <input type="password" id="ai-api-key" placeholder="أدخل مفتاح API الخاص بك هنا" onchange="saveApiKey()" style="width: 100%; margin-bottom: 5px;">
+        <p style="font-size: 0.8em; color: #7f8c8d; margin-bottom: 0;">
+            * يتم حفظ المفتاح محلياً في جهازك فقط لضمان الخصوصية.
+        </p>
+    </div>
+</div>
+
                     <div class="settings-card">
                         <h3><i class="fas fa-cloud"></i> المزامنة السحابية</h3>
                         <div id="current-sync-status" class="auth-status signed-out" style="margin-bottom: 10px;">
@@ -2475,94 +2492,179 @@ function applyStarsFeature(enabled) {
     }
 
     // ==========================================
+    // 🧠 إعدادات محرك X10Think للذكاء الاصطناعي
+    // ==========================================
+    window.updateAdvisorMode = async function() {
+        const mode = document.getElementById("advisor-mode-selector").value;
+        await DBHelper.put("settings", { key: "advisorMode", value: mode });
+        document.getElementById("ai-key-container").style.display = mode === "ai" ? "block" : "none";
+        
+        if (typeof FirebaseHelper !== 'undefined' && FirebaseHelper.currentUser) {
+            FirebaseHelper.saveItem("settings", "advisorMode", { key: "advisorMode", value: mode }).catch(e => console.log("تأجل الرفع"));
+        }
+        if (beehiveManager.getActive()) beehiveManager.getActive().refreshUI();
+    };
+
+    window.saveApiKey = async function() {
+        const key = document.getElementById("ai-api-key").value.trim();
+        await DBHelper.put("settings", { key: "geminiApiKey", value: key });
+        showNotification("تم حفظ مفتاح API للذكاء الاصطناعي", "success");
+    };
+
+    async function askX10ThinkAI(promptText, systemInstruction) {
+        const apiKey = (await DBHelper.get("settings", "geminiApiKey"))?.value;
+        if (!apiKey) throw new Error("مفتاح API غير متوفر. يرجى إضافته من الإعدادات أولاً.");
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        
+        const body = {
+            contents: [{ parts: [{ text: promptText }] }],
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: { 
+                responseMimeType: "application/json", 
+                temperature: 0.3 
+            }
+        };
+
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) throw new Error("فشل الاتصال بالذكاء الاصطناعي. يرجى التأكد من صلاحية المفتاح أو اتصالك بالإنترنت.");
+        const data = await res.json();
+        return JSON.parse(data.candidates[0].content.parts[0].text);
+    }
+
+    // ==========================================
     // 🧠 نظام المستشار الذكي المتقدم جداً (إصدار 2026)
     // ==========================================
-    function generateHiveRecommendations(manager, history) {
+    async function generateHiveRecommendations(manager, history) {
         const listDiv = getElement("recommendations-list");
-        listDiv.innerHTML = "";
+        const mode = (await DBHelper.get("settings", "advisorMode"))?.value || "traditional";
         
         if (history.length === 0) {
             return listDiv.innerHTML = '<div class="recommendation-card info" style="text-align:center;"><i class="fas fa-robot fa-2x" style="color:var(--info-color); margin-bottom:10px;"></i><br>أحتاج لبعض السجلات لأبدأ التحليل السحري لهذه الخلية.</div>';
         }
 
+        // --- وضع الذكاء الاصطناعي (X10Think) ---
+        if (mode === "ai") {
+            listDiv.innerHTML = '<div class="recommendation-card info" style="text-align:center; opacity: 0.8;"><i class="fas fa-brain fa-spin fa-2x" style="color:var(--info-color); margin-bottom:10px;"></i><br>مستشار X10Think يقوم بتحليل البيانات، يرجى الانتظار...</div>';
+            
+            // قمنا بتضمين القواعد الهامة لنظامك داخل عقل الذكاء الاصطناعي ليعمل كخبير في نظامك
+            const systemPrompt = `أنت "X10Think"، مستشار ذكاء اصطناعي خبير جداً في إدارة المناحل وتوجيه النحالين. 
+            المطلوب: تحليل سجلات الخلية المُرسلة إليك، استنتاج المشاكل والتغيرات، وتقديم 1 إلى 3 توصيات دقيقة وعملية.
+            تعليمات حسابية صارمة للنظام: 
+            1. يجب أن يُحسب العسل دائماً في تقاريرك بوحدة "جالون 5 لتر" بشكل أساسي.
+            2. ركز في تحليلاتك الاستراتيجية على إجمالي المجاميع (Total Sums) للمنحل، فكمية إنتاج أو صرف الخلية الفردية أقل أهمية من الصورة الكلية.
+            
+            يجب أن يكون ردك حصرياً بصيغة مصفوفة JSON صالحة (Array of objects) بالهيكل التالي:
+            [
+              {
+                "type": "حدد واحدة من: success, warning, danger, info, deficit, excess",
+                "icon": "أيقونة FontAwesome مناسبة بدون الكلاس الأساسي (مثال: fa-skull-crossbones, fa-arrow-up)",
+                "title": "عنوان جذاب ومختصر للتوصية",
+                "text": "شرح علمي أو توجيه عملي دقيق للنحال"
+              }
+            ]`;
+
+            try {
+                // تبسيط البيانات لتقليل استهلاك الـ API وجعل التحليل أسرع
+                const simplifiedHistory = history.map(h => ({
+                    date: new Date(h.date).toLocaleDateString('ar-EG'),
+                    frames: h.frames,
+                    honeyFrames: h.honeyFrames,
+                    pollenFrames: h.pollenFrames,
+                    queenStatus: h.queenStatus,
+                    notes: h.notes
+                }));
+
+                const aiRecommendations = await askX10ThinkAI(JSON.stringify(simplifiedHistory), systemPrompt);
+                
+                listDiv.innerHTML = "";
+                aiRecommendations.forEach(rec => {
+                    listDiv.innerHTML += `
+                    <div class="recommendation-card ${rec.type}" style="position:relative; padding-right: 45px; border-left: 3px solid var(--info-color);">
+                        <div style="position:absolute; right:10px; top:15px; font-size:1.5rem; opacity:0.8;"><i class="fas ${rec.icon}"></i></div>
+                        <h4 style="margin-bottom:5px;">${rec.title} <span style="font-size:0.6em; background:var(--info-color); color:white; padding:2px 5px; border-radius:4px; margin-right:5px; vertical-align:middle;">AI</span></h4>
+                        <p style="font-size:0.9rem; margin:0; line-height:1.5;">${rec.text}</p>
+                    </div>`;
+                });
+            } catch (error) {
+                listDiv.innerHTML = `<div class="recommendation-card danger" style="text-align:center;"><i class="fas fa-exclamation-triangle" style="font-size:2rem; margin-bottom:10px;"></i><br>خطأ في محرك X10Think: ${error.message}</div>`;
+            }
+            return; // إيقاف التنفيذ هنا حتى لا يعمل الكود التقليدي
+        }
+
+        // --- الوضع التقليدي (القواعد الثابتة) ---
+        listDiv.innerHTML = "";
         const recommendations = [];
         const latest = history[history.length - 1];
         const health = manager.calculateHealthScore(latest);
         const { frames, honeyFrames = 0, pollenFrames = 0, queenYear, queenStatus, notes = "" } = latest;
         const currentSeason = getCurrentStarSeason();
         
-        // --- 1. محرك تحليل كفاءة الملكة (Queen Performance AI) ---
         let queenScore = 100;
         const qAge = queenYear ? (new Date().getFullYear() - parseInt(queenYear)) : 0;
-        if (qAge >= 2) queenScore -= 30; // خصم للعمر
-        if (frames < 4) queenScore -= 20; // خصم لضعف الحضنة
+        if (qAge >= 2) queenScore -= 30;
+        if (frames < 4) queenScore -= 20;
         if (history.length >= 2) {
             const prev = history[history.length - 2];
             const growth = frames - prev.frames;
-            if (growth > 1) queenScore = Math.min(100, queenScore + 20); // مكافأة للنمو السريع
-            else if (growth < 0) queenScore -= 15; // خصم للتراجع
+            if (growth > 1) queenScore = Math.min(100, queenScore + 20);
+            else if (growth < 0) queenScore -= 15;
         }
         if (queenStatus !== "ملكة") queenScore = 0;
 
-        // --- 2. محرك قراءة النصوص والسلوك (NLP Engine) ---
         const textAnalysis = notes.toLowerCase();
         const isAggressive = textAnalysis.includes("شرس") || textAnalysis.includes("هجوم");
-        const isCalm = textAnalysis.includes("هادئ");
         const hasDiseases = textAnalysis.includes("فاروا") || textAnalysis.includes("مرض") || textAnalysis.includes("تكلس");
 
-        // بناء التوصيات بناءً على الأولويات (Critical, High, Strategic, Info)
-
-        // 🔴 الحالات الحرجة (تدخل فوري اليوم)
         if (queenStatus === "مكذبة") {
-            recommendations.push({ type: "danger", icon: "fa-skull-crossbones", title: "توقف! خلية مكذبة", text: "النظام يرفض استمرار هذه الخلية. انفض النحل بعيداً لمسافة 50 متراً وأنقذ الصناديق والإطارات فوراً." });
+            recommendations.push({ type: "danger", icon: "fa-skull-crossbones", title: "توقف! خلية مكذبة", text: "النظام يرفض استمرار هذه الخلية. انفض النحل بعيداً لمسافة 50 متراً." });
         } else if (queenStatus === "بدون ملكة") {
-            recommendations.push({ type: "danger", icon: "fa-exclamation-triangle", title: "طوارئ: طائفة يتيمة", text: "كل يوم يمر يقربها من التكذيب. أضف ملكة ملقحة أو ضمها لأقرب خلية قوية لإنقاذ جيش الشغالات." });
+            recommendations.push({ type: "danger", icon: "fa-exclamation-triangle", title: "طوارئ: طائفة يتيمة", text: "كل يوم يمر يقربها من التكذيب. أضف ملكة ملقحة أو ضمها." });
         }
         if (honeyFrames === 0 && frames > 2) {
-            recommendations.push({ type: "danger", icon: "fa-bone", title: "مجاعة حتمية", text: "الخلية تستنزف آخر قطرة طاقة. قدم محلول سكري مركز (1:1) أو عجينة فوندان اليوم وإلا ستموت." });
+            recommendations.push({ type: "danger", icon: "fa-bone", title: "مجاعة حتمية", text: "الخلية تستنزف آخر قطرة طاقة. قدم محلول سكري مركز (1:1)." });
         }
         if (hasDiseases) {
-             recommendations.push({ type: "danger", icon: "fa-bug", title: "رصد وباء", text: "تم تسجيل إصابة مرضية/فاروا. استخدم العلاج المناسب فوراً وركز على الإطارات المفتوحة." });
+             recommendations.push({ type: "danger", icon: "fa-bug", title: "رصد وباء", text: "تم تسجيل إصابة مرضية/فاروا. استخدم العلاج المناسب فوراً." });
         }
 
-        // 🟠 التحذيرات والتوقعات (تدخل خلال أسبوع)
         if (history.length >= 3 && queenStatus === "ملكة") {
              const prev1 = history[history.length - 2];
              const prev2 = history[history.length - 3];
              if (frames < prev1.frames && prev1.frames < prev2.frames) {
-                 recommendations.push({ type: "warning", icon: "fa-chart-line-down", title: "انهيار تدريجي مرصود", text: "المنحنى في هبوط لـ 3 فحوصات متتالية! تأكد من عدم وجود (دبور، سرقة، أو ملكة فاشلة)." });
+                 recommendations.push({ type: "warning", icon: "fa-chart-line-down", title: "انهيار تدريجي مرصود", text: "المنحنى في هبوط لـ 3 فحوصات متتالية! تأكد من عدم وجود سرقة أو ملكة فاشلة." });
              }
         }
+
         if (currentSeason && currentSeason.name.includes("بدء التوسعة") && frames >= 7 && qAge > 0) {
-             const honeyPressure = honeyFrames > 4 ? "، ويوجد ضغط عسل يضيق على الملكة" : "";
-             recommendations.push({ type: "warning", icon: "fa-wind", title: "خوارزمية التطريد تطلق إنذاراً", text: `الخلية قوية والملكة ليست جديدة${honeyPressure}. نسبة التطريد تتجاوز 80%. قم بالتقسيم أو رفع عاسلة فوراً.` });
+             recommendations.push({ type: "warning", icon: "fa-wind", title: "خوارزمية التطريد تطلق إنذاراً", text: "الخلية قوية ونسبة التطريد عالية. قم بالتقسيم أو رفع عاسلة فوراً." });
         }
 
-        // 🔵 توجيهات استراتيجية واقتصادية (إدارة ذكية)
         if (queenStatus === "ملكة") {
             let qHtml = `أداء الملكة مقدر بـ <b>${queenScore}%</b>. `;
             if (queenScore >= 80) {
-                 qHtml += "هذه الملكة (نخبة)، فكر في التربية منها وأخذ يرقات لإنتاج ملكات جديدة للمنحل.";
+                 qHtml += "هذه الملكة (نخبة)، فكر في التربية منها.";
                  recommendations.push({ type: "info", icon: "fa-crown", title: "جينات ممتازة مرصودة", text: qHtml });
             } else if (queenScore < 50) {
-                 qHtml += "ملكة غير منتجة وتستهلك موارد المنحل عبثاً. ضعها في جدول (الاستبدال أو الإعدام) للموسم القادم.";
+                 qHtml += "ملكة غير منتجة وتستهلك موارد المنحل عبثاً. استبدلها.";
                  recommendations.push({ type: "warning", icon: "fa-sync-alt", title: "قرار استبدال استراتيجي", text: qHtml });
             }
         }
 
         if (frames >= 8 && honeyFrames >= 5 && pollenFrames >= 2) {
-             recommendations.push({ type: "success", icon: "fa-medal", title: "جاهزية اقتصادية قصوى", text: "توازن مثالي بين الجيش والمؤونة. الخلية جاهزة تماماً لقطفة العسل القادمة. ركز فقط على التوسعة الرأسية (إضافة طوابق)." });
+             recommendations.push({ type: "success", icon: "fa-medal", title: "جاهزية اقتصادية قصوى", text: "توازن مثالي. الخلية جاهزة للقطفة، ركز على إضافة العاسلات." });
         }
-        
-        if (isAggressive) recommendations.push({ type: "info", icon: "fa-shield-alt", title: "سلوك عدواني", text: "الذكاء الاصطناعي لاحظ تسجيلك لطباع شرسة. هذه الجينات مزعجة في الإدارة، فكر بتغيير السلالة تدريجياً." });
 
         if (recommendations.length === 0) {
-            recommendations.push({ type: "success", icon: "fa-check-double", title: "انسجام تام", text: "معادلة الخلية (حضنة/عسل/عمر الملكة) في أفضل حالاتها الممكنة حالياً." });
+            recommendations.push({ type: "success", icon: "fa-check-double", title: "انسجام تام", text: "معادلة الخلية في أفضل حالاتها الممكنة حالياً." });
         }
 
-        // طباعة النتائج بتصميم 2026 المبهر
         recommendations.forEach(rec => {
-            // تصميم شريط التقدم لو كان هناك تقييم للملكة
             let extraHTML = "";
             if (rec.title.includes("جينات") || rec.title.includes("استبدال")) {
                  extraHTML = `<div style="background: rgba(0,0,0,0.1); border-radius:10px; height:6px; margin-top:8px; overflow:hidden;"><div style="width:${queenScore}%; background:var(--header-color); height:100%;"></div></div>`;
@@ -3709,6 +3811,19 @@ function applyStarsFeature(enabled) {
     async function initializeApp() {
         const theme = (await DBHelper.get("settings", "theme"))?.value || "light";
         applyTheme(theme);
+        // --- تحميل إعدادات محرك المستشار ---
+        const advisorMode = (await DBHelper.get("settings", "advisorMode"))?.value || "traditional";
+        const modeSelector = document.getElementById("advisor-mode-selector");
+        if (modeSelector) {
+            modeSelector.value = advisorMode;
+            document.getElementById("ai-key-container").style.display = advisorMode === "ai" ? "block" : "none";
+        }
+
+        const apiKey = (await DBHelper.get("settings", "geminiApiKey"))?.value || "";
+        if (document.getElementById("ai-api-key")) {
+            document.getElementById("ai-api-key").value = apiKey;
+        }
+        // -----------------------------------
 
         const starsEnabled = (await DBHelper.get("settings", "starsFeature"))?.value ?? false;
         getElement("stars-feature-checkbox").checked = starsEnabled;
