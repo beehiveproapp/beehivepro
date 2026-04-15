@@ -2526,15 +2526,30 @@ function applyStarsFeature(enabled) {
             }
         };
 
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
 
-        if (!res.ok) throw new Error("فشل الاتصال بالذكاء الاصطناعي. يرجى التأكد من صلاحية المفتاح أو اتصالك بالإنترنت.");
-        const data = await res.json();
-        return JSON.parse(data.candidates[0].content.parts[0].text);
+            if (!res.ok) {
+                const errorData = await res.json();
+                console.error("Gemini API Error:", errorData);
+                throw new Error(errorData.error?.message || "فشل الاتصال بجوجل. تأكد من الإنترنت أو صلاحية المفتاح.");
+            }
+            
+            const data = await res.json();
+            let responseText = data.candidates[0].content.parts[0].text;
+            
+            // 🚀 تنظيف النص في حال أرجعت جوجل علامات Markdown
+            responseText = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
+            
+            return JSON.parse(responseText);
+        } catch (error) {
+            console.error("X10Think Error:", error);
+            throw new Error("حدث خطأ في معالجة البيانات: " + error.message);
+        }
     }
 
     // ==========================================
@@ -2682,18 +2697,87 @@ function applyStarsFeature(enabled) {
 
     async function generateSiteRecommendations(manager) {
         const listDiv = getElement("site-recommendations-list");
-        listDiv.innerHTML = "";
+        const mode = (await DBHelper.get("settings", "advisorMode"))?.value || "traditional";
         const hives = await manager.loadHives();
         const allHistory = await manager.loadHistory();
         
-        if (hives.length === 0) return listDiv.innerHTML = '<p class="recommendation-card info">بانتظار بيانات الموقع لإنشاء الخرائط التحليلية.</p>';
+        if (hives.length === 0) {
+            return listDiv.innerHTML = '<p class="recommendation-card info" style="text-align:center;">بانتظار إضافة خلايا للموقع لإنشاء الخرائط التحليلية.</p>';
+        }
 
+        // --- 🧠 محرك X10Think لتحليل المنحل بالكامل ---
+        if (mode === "ai") {
+            listDiv.innerHTML = '<div class="recommendation-card info" style="text-align:center; opacity: 0.8;"><i class="fas fa-brain fa-spin fa-2x" style="color:var(--info-color); margin-bottom:10px;"></i><br>مستشار X10Think يقرأ بيانات الموقع ككل، يرجى الانتظار...</div>';
+            
+            const systemPrompt = `أنت "X10Think"، مستشار ذكاء اصطناعي خبير جداً في إدارة المناحل وتوجيه النحالين. 
+            المطلوب: تحليل بيانات الموقع (المنحل) المُرسلة إليك بالكامل، واستنتاج حالة الموقع العامة، وتقديم 2 إلى 4 توصيات استراتيجية.
+            تعليمات حسابية صارمة: 
+            1. يجب أن يُحسب العسل دائماً بوحدة "جالون 5 لتر".
+            2. ركز في تحليلاتك الاستراتيجية على المجاميع الكلية (Total Sums) للمنحل وتوازن الموارد بدلاً من الخلايا الفردية.
+            
+            يجب أن يكون ردك حصرياً بصيغة مصفوفة JSON (Array of objects) بالهيكل التالي:
+            [
+              {
+                "type": "حدد واحدة من: success, warning, danger, info, deficit, excess",
+                "icon": "أيقونة FontAwesome مناسبة (مثال: fa-balance-scale, fa-biohazard, fa-leaf)",
+                "title": "عنوان جذاب للتوصية",
+                "text": "شرح علمي أو توجيه استراتيجي لإدارة هذا الموقع ككل"
+              }
+            ]`;
+
+            try {
+                // تبسيط البيانات (أخذ أحدث فحص لكل خلية) لتقليل الاستهلاك وتسريع الرد
+                const simplifiedHives = hives.map(h => ({
+                    hiveId: h.hiveId,
+                    frames: h.frames,
+                    honey: h.honeyFrames,
+                    pollen: h.pollenFrames,
+                    queen: h.queenStatus,
+                    notes: h.notes
+                }));
+
+                const aiRecommendations = await askX10ThinkAI(JSON.stringify(simplifiedHives), systemPrompt);
+                
+                listDiv.innerHTML = "";
+                
+                // حساب درجة الصحة للموقع بالذكاء الاصطناعي لعرضها
+                let totalScore = 0;
+                hives.forEach(h => totalScore += manager.calculateHealthScore(h));
+                const avgHealth = Math.round(totalScore / hives.length);
+                let healthColor = avgHealth > 75 ? "var(--success-color)" : (avgHealth > 50 ? "var(--warning-color)" : "var(--danger-color)");
+                let healthIcon = avgHealth > 75 ? "fa-heartbeat" : "fa-heart-broken";
+                
+                listDiv.innerHTML += `
+                    <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 15px; display:flex; align-items:center; justify-content:space-between;">
+                        <div>
+                            <h4 style="margin:0 0 5px 0;"><i class="fas fa-satellite"></i> تقييم ذكاء الموقع</h4>
+                            <p style="margin:0; font-size:0.85rem; color:#7f8c8d;">مؤشر الحيوية العام (AI)</p>
+                        </div>
+                        <div style="font-size:2rem; font-weight:bold; color:${healthColor};">
+                            ${avgHealth}% <i class="fas ${healthIcon}" style="font-size:1.5rem;"></i>
+                        </div>
+                    </div>
+                `;
+
+                aiRecommendations.forEach(rec => {
+                    listDiv.innerHTML += `
+                    <div class="recommendation-card ${rec.type}" style="position:relative; padding-right: 45px; border-left: 3px solid var(--info-color);">
+                        <div style="position:absolute; right:10px; top:15px; font-size:1.5rem; opacity:0.8;"><i class="fas ${rec.icon}"></i></div>
+                        <h4 style="margin-bottom:5px;">${rec.title} <span style="font-size:0.6em; background:var(--info-color); color:white; padding:2px 5px; border-radius:4px; margin-right:5px; vertical-align:middle;">AI</span></h4>
+                        <p style="font-size:0.9rem; margin:0; line-height:1.5;">${rec.text}</p>
+                    </div>`;
+                });
+            } catch (error) {
+                listDiv.innerHTML = `<div class="recommendation-card danger" style="text-align:center;"><i class="fas fa-exclamation-triangle" style="font-size:2rem; margin-bottom:10px;"></i><br>خطأ في محرك X10Think للموقع: ${error.message}</div>`;
+            }
+            return;
+        }
+
+        // --- الوضع التقليدي (القواعد الثابتة كما برمجتها سابقاً) ---
+        listDiv.innerHTML = "";
         const recommendations = [];
         const count = hives.length;
         
-        // --- محرك تحليل الموقع الذكي (Site-wide AI) ---
-        
-        // 1. حساب مؤشر قوة الموقع العام (Site Vigor Index)
         let totalScore = 0;
         let totalHoney = 0;
         let strongHives = [], weakHives = [];
@@ -2708,16 +2792,10 @@ function applyStarsFeature(enabled) {
         const avgHealth = Math.round(totalScore / count);
         const avgHoney = (totalHoney / count).toFixed(1);
 
-        // 2. خوارزمية التوزيع الذكي للموارد (Resource Balancing)
         if (strongHives.length >= 2 && weakHives.length >= 2) {
-             recommendations.push({ 
-                 type: "info", icon: "fa-random", 
-                 title: "⚖️ خطة توازن (Cross-Balance)", 
-                 text: `يوجد تفاوت كبير. الذكاء الاصطناعي يقترح: اسحب إطار حضنة مغلق من الخلايا (${strongHives.slice(0,3).join(',')}) وادعم بها الخلايا الضعيفة (${weakHives.slice(0,3).join(',')}) لرفع إنتاجية المنحل ككل بنسبة 30%.` 
-             });
+             recommendations.push({ type: "info", icon: "fa-random", title: "⚖️ خطة توازن (Cross-Balance)", text: `يوجد تفاوت كبير. الذكاء التقليدي يقترح: اسحب إطار حضنة مغلق من الخلايا القوية وادعم بها الخلايا الضعيفة.` });
         }
 
-        // 3. تحليل الانتشار الوبائي المكاني (Epidemic Radar)
         const recentRecords = allHistory.filter(r => (new Date() - new Date(r.date)) <= 14 * 24 * 60 * 60 * 1000);
         let varroaInfected = new Set();
         recentRecords.forEach(r => {
@@ -2725,29 +2803,15 @@ function applyStarsFeature(enabled) {
         });
 
         if (varroaInfected.size >= 3) {
-            recommendations.push({ 
-                type: "danger", icon: "fa-biohazard", 
-                title: "🔴 رادار الأوبئة: خطر تفشي", 
-                text: `تحذير: تم رصد (أمراض/فاروا) في ${varroaInfected.size} خلايا خلال الأسبوعين الماضيين. هذا مؤشر لانتشار وبائي قادم، ابدأ مكافحة جماعية للمنحل بأكمله الليلة.` 
-            });
+            recommendations.push({ type: "danger", icon: "fa-biohazard", title: "🔴 رادار الأوبئة: خطر تفشي", text: `تحذير: تم رصد أمراض في خلايا متعددة. ابدأ مكافحة جماعية للمنحل بأكمله.` });
         }
 
-        // 4. تقييم الأمن الغذائي للموقع (Food Security)
         if (avgHoney < 1.5) {
-             recommendations.push({ 
-                 type: "deficit", icon: "fa-leaf", 
-                 title: "🍂 إعلان حالة جفاف رعوي", 
-                 text: `متوسط العسل (${avgHoney} إطار/خلية). الموقع لا يوفر رحيقاً كافياً لدعم هذا العدد من الخلايا. فكر جدياً في (الترحيل) لمكان آخر أو ابدأ بالتغذية السكرية المفتوحة.` 
-             });
+             recommendations.push({ type: "deficit", icon: "fa-leaf", title: "🍂 إعلان حالة جفاف رعوي", text: `متوسط العسل قليل. فكر في الترحيل أو ابدأ بالتغذية.` });
         } else if (avgHoney > 4) {
-             recommendations.push({ 
-                 type: "excess", icon: "fa-tint", 
-                 title: "🍯 فيض رحيقي ممتاز", 
-                 text: `المرعى حول الموقع غزير جداً (متوسط المخزون ${avgHoney}). استغل الفرصة وركب العاسلات (الطوابق) لجمع أكبر قدر من العسل.` 
-             });
+             recommendations.push({ type: "excess", icon: "fa-tint", title: "🍯 فيض رحيقي ممتاز", text: `المرعى ممتاز. استغل الفرصة وركب العاسلات.` });
         }
 
-        // 5. تقرير صحة الموقع الشامل
         let healthColor = avgHealth > 75 ? "var(--success-color)" : (avgHealth > 50 ? "var(--warning-color)" : "var(--danger-color)");
         let healthIcon = avgHealth > 75 ? "fa-heartbeat" : "fa-heart-broken";
         
@@ -2764,7 +2828,7 @@ function applyStarsFeature(enabled) {
         `;
 
         if (recommendations.length === 0) {
-             recommendations.push({ type: "success", icon: "fa-robot", title: "منظومة مثالية", text: "لم يرصد الرادار أي تهديدات. إدارة الموقع تسير بكفاءة تشغيلية ممتازة." });
+             recommendations.push({ type: "success", icon: "fa-robot", title: "منظومة مثالية", text: "لم يرصد الرادار أي تهديدات. إدارة الموقع تسير بكفاءة." });
         }
 
         recommendations.forEach(rec => {
