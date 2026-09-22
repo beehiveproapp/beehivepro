@@ -1,0 +1,60 @@
+@media (max-width: 768px) {
+    .main-content-wrapper { flex-direction: column; }
+    .content-area { padding: 10px; }
+    h1 { font-size: 1.5rem; }
+    .dashboard-grid { grid-template-columns: 1fr 1fr; }
+    .kpi-value { font-size: 28px; }
+    .hive-list-controls { flex-direction: column; align-items: stretch; }
+    .auth-buttons { flex-direction: column; }
+
+    /* -- التعديلات الجديدة للموبايل -- */
+    .main-tabs { display: none !important; } /* إخفاء التبويبات العلوية */
+    .container { padding-bottom: 70px !important; min-height: 100vh; } 
+    
+    /* تصميم الشريط السفلي */
+    .bottom-nav-bar {
+        display: flex; position: fixed; bottom: 0; left: 0; width: 100%;
+        background-color: var(--content-bg-color); border-top: 1px solid var(--border-color);
+        box-shadow: 0 -4px 15px var(--shadow-color); z-index: 2000; justify-content: space-around;
+        padding: 8px 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); 
+    }
+    .bottom-nav-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: none; border: none; color: #7f8c8d; font-size: 11px; gap: 4px;
+        padding: 5px; cursor: pointer; flex: 1; transition: all 0.2s;
+    }
+    .bottom-nav-btn i { font-size: 20px; }
+    .bottom-nav-btn.active { color: var(--header-color); transform: translateY(-2px); font-weight: bold; }
+    
+    /* تحويل القائمة الجانبية لدرج منزلق (Drawer) */
+    .sidebar {
+        position: fixed; top: 0; right: -100%; height: 100vh; width: 260px;
+        z-index: 3000; flex-direction: column; transition: right 0.3s ease;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.5); display: flex;
+    }
+    .sidebar.open { right: 0; }
+    .menu-toggle-btn { display: none; }
+    .sidebar-header, .sidebar-footer { display: block; }
+    .sidebar-main { display: block; overflow-y: auto; }
+    
+    /* خلفية التعتيم للقائمة الجانبية */
+    .sidebar-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6); z-index: 2999; display: none; opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .sidebar-overlay.active { display: block; opacity: 1; }
+}
+
+/* إخفاء إضافات الموبايل في شاشات الكمبيوتر */
+@media (min-width: 769px) {
+    .bottom-nav-bar { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+}
+@media (max-width: 480px) {
+     .dashboard-grid { grid-template-columns: 1fr; }
+     .analysis-grid { grid-template-columns: 1fr; }
+     .modal-buttons { flex-direction: column; }
+     .modal-buttons button { width: 100%; margin: 5px 0; }
+     .app-footer { font-size: 0.8em; }
+}

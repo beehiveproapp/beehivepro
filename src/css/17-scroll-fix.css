@@ -1,0 +1,23 @@
+/* هذا التعديل يمنع التحديث فقط دون قفل التمرير */
+html {
+    overscroll-behavior-y: none; 
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    direction: rtl;
+    display: flex;
+    min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
+    /* تأكد من حذف أي overscroll-behavior من هنا */
+}
+
+.content-area { 
+    flex-grow: 1; 
+    padding: 25px; 
+    overflow-y: auto; /* هذا يسمح بالتمرير */
+    -webkit-overflow-scrolling: touch; /* يجعل التمرير ناعماً في الآيفون */
+}

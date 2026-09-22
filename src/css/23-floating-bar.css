@@ -1,0 +1,40 @@
+/* ==========================================
+   شريط الإجراءات السريعة العائم (Floating Quick Actions)
+   ========================================== */
+.floating-selection-bar {
+    position: fixed;
+    bottom: 80px; /* يظهر فوق القائمة السفلية للموبايل */
+    left: 50%;
+    transform: translateX(-50%) translateY(100px); /* مخفي للأسفل */
+    background: linear-gradient(145deg, var(--header-color), var(--header-alt-color));
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    z-index: 2500;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+}
+.floating-selection-bar.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+@media (min-width: 769px) {
+    .floating-selection-bar { bottom: 30px; }
+}
+.floating-selection-bar button {
+    background: white;
+    color: var(--header-color);
+    border: none;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}

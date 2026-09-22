@@ -1,0 +1,13 @@
+*, *::before, *::after { box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    direction: rtl;
+    display: flex;
+    min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
+}
+.app-hidden { display: none !important; }
+.feature-hidden { display: none !important; }

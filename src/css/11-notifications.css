@@ -1,0 +1,11 @@
+#notification-container { position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+@keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.notification {
+    padding: 15px 20px; border-radius: 8px; color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.5s ease-out;
+    display: flex; align-items: center; gap: 10px; min-width: 280px;
+}
+.notification.info { background-color: var(--info-color); }
+.notification.success { background-color: var(--success-color); }
+.notification.warning { background-color: var(--warning-color); color: #333; }
+.notification.error { background-color: var(--danger-color); }

@@ -1,0 +1,67 @@
+/* تأثيرات Glassmorphism للبطاقات */
+.kpi-card, .chart-container, .todo-container, .star-season-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+}
+
+.kpi-card:hover, .chart-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(217, 119, 6, 0.15);
+}
+
+/* حركة دخول متدرجة لصفوف الجدول (Staggered Animation) */
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+tbody tr {
+    animation: slideUpFade 0.4s ease forwards;
+    opacity: 0;
+}
+
+tbody tr:nth-child(1) { animation-delay: 0.1s; }
+tbody tr:nth-child(2) { animation-delay: 0.2s; }
+tbody tr:nth-child(3) { animation-delay: 0.3s; }
+tbody tr:nth-child(4) { animation-delay: 0.4s; }
+/* ... وهكذا */
+
+/* تحسين شكل الأزرار */
+button {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    letter-spacing: 0.5px;
+}
+button:active {
+    transform: scale(0.95) !important;
+}
+
+/* --- تأثير العلامة المائية لرقم الخلية في جدول الملاحظات --- */
+.notes-cell {
+    position: relative;
+    overflow: hidden;
+}
+
+.notes-cell::before {
+    content: attr(data-hive-number); /* سحب رقم الخلية من الـ HTML */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4.5rem; /* حجم الخط كبير ليكون كخلفية */
+    font-weight: 900;
+    color: var(--header-color); /* لون الهيدر (العسلي/الكهرماني) */
+    opacity: 0.08; /* شفافية عالية جداً لكي لا يزعج القراءة */
+    z-index: 0;
+    pointer-events: none; /* لكي لا يمنع التمرير (الـ scroll) داخل الملاحظات */
+    user-select: none; /* لمنع تحديد الرقم عند نسخ النص */
+}
+
+.notes-cell pre {
+    position: relative;
+    z-index: 1; /* رفع النص ليكون فوق الرقم الشفاف */
+    background: transparent !important;
+}

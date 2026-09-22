@@ -1,0 +1,23 @@
+.main-tabs { display: flex; gap: 5px; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; overflow-x: auto;}
+.tab-button { background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 15px; cursor: pointer; font-size: 16px; color: var(--text-color); white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;}
+.tab-button.active { border-bottom-color: var(--header-color); color: var(--header-color); font-weight: bold; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+.kpi-card { background: var(--bg-color); padding: 20px; border-radius: 8px; text-align: center; }
+.kpi-card h3 { margin: 0 0 10px; color: var(--text-color); font-size: 18px; }
+.kpi-value { font-size: 36px; font-weight: bold; }
+.kpi-card .kpi-value.strong { color: var(--strong-hive-color); }
+.kpi-card .kpi-value.weak { color: var(--weak-hive-color); }
+.chart-container { background: var(--bg-color); padding: 20px; border-radius: 8px; }
+.pie-chart { width: 150px; height: 150px; border-radius: 50%; margin: 20px auto; position: relative; }
+.pie-chart-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-color); width: 80px; height: 80px; border-radius: 50%; }
+.chart-legend { list-style: none; padding: 0; display: flex; justify-content: center; gap: 15px; }
+.chart-legend li { display: flex; align-items: center; }
+.legend-color { width: 15px; height: 15px; display: inline-block; margin-left: 8px; border-radius: 3px; }
+
+.todo-container { background: var(--bg-color); padding: 20px; border-radius: 8px; }
+#todo-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+#todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid var(--border-color); }
+.delete-task { background: none; border: none; color: var(--danger-color); cursor: pointer; padding: 0; margin: 0; }

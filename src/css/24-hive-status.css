@@ -1,0 +1,36 @@
+/* /* ==========================================
+   تمييز بطاقات الخلايا وفصلها بالألوان بالكامل
+   ========================================== */
+/* 🟢 الخلايا القوية (أخضر) */
+.table-wrapper tr.hive-strong {
+    border: 1px solid rgba(16, 185, 129, 0.4) !important; /* إطار كامل ملون */
+    border-right: 5px solid var(--success-color) !important; /* شريط أيمن بارز */
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.04), var(--bg-color)) !important; /* خلفية خضراء شفافة جداً */
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08) !important; /* توهج ظلي أخضر يفصل البطاقة */
+}
+
+/* 🟡 الخلايا المتوسطة (كهرماني/برتقالي) */
+.table-wrapper tr.hive-medium {
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    border-right: 5px solid var(--warning-color) !important;
+    background: linear-gradient(145deg, rgba(245, 158, 11, 0.04), var(--bg-color)) !important;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08) !important;
+}
+
+/* 🔴 الخلايا الضعيفة (أحمر) */
+.table-wrapper tr.hive-weak {
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    border-right: 5px solid var(--danger-color) !important;
+    background: linear-gradient(145deg, rgba(239, 68, 68, 0.04), var(--bg-color)) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08) !important;
+}
+
+/* ضمان المسافات بين البطاقات في الموبايل */
+@media (max-width: 768px) {
+    .table-wrapper tr.hive-strong, 
+    .table-wrapper tr.hive-medium, 
+    .table-wrapper tr.hive-weak {
+        margin-bottom: 12px !important; /* مسافة فاصلة واضحة بين كل بطاقة وأخرى */
+        border-right-width: 6px !important;
+    }
+}

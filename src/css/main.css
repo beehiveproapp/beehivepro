@@ -1,0 +1,26 @@
+/* الترتيب هنا = ترتيب التطبيق في CSS (مهم جداً: لا تغيّره)
+   Vite يدمج كل هذه الملفات في ملف واحد مضغوط عند البناء */
+@import './01-variables.css';
+@import './02-base.css';
+@import './03-sidebar.css';
+@import './04-layout.css';
+@import './05-forms.css';
+@import './06-tables.css';
+@import './07-tabs-dashboard.css';
+@import './08-modals.css';
+@import './09-analysis.css';
+@import './10-quick-actions.css';
+@import './11-notifications.css';
+@import './12-features.css';
+@import './13-honeycomb-auth.css';
+@import './14-responsive.css';
+@import './15-password-field.css';
+@import './16-animations.css';
+@import './17-scroll-fix.css';
+@import './18-tutorial.css';
+@import './19-effects.css';
+@import './20-popup.css';
+@import './21-quick-filters-mobile-cards.css';
+@import './22-dashboard-cards.css';
+@import './23-floating-bar.css';
+@import './24-hive-status.css';

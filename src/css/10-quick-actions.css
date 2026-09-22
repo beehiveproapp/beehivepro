@@ -1,0 +1,21 @@
+.quick-actions-container { position: relative; display: flex; align-items: center; justify-content: space-between; }
+#quick-actions-btn { background-color: var(--header-color); }
+#quick-actions-menu {
+    display: none; position: absolute; top: 100%; left: 0; background-color: var(--content-bg-color);
+    border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 5px 15px var(--shadow-color);
+    z-index: 101; min-width: 220px; overflow: hidden;
+}
+.quick-action-item { padding: 10px 15px; cursor: pointer; transition: background-color 0.2s; display: flex; gap: 10px; align-items: center;}
+.quick-action-item:not(:last-child) { border-bottom: 1px solid var(--border-color); }
+.quick-action-item:hover { background-color: var(--bg-color); }
+
+#firebase-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.9); z-index: 4000; display: none;
+    align-items: center; justify-content: center;
+}
+#firebase-box { 
+    background: var(--content-bg-color); padding: 30px; border-radius: 12px; 
+    width: 90%; max-width: 400px; text-align: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}

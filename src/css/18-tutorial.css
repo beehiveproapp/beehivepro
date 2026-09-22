@@ -1,0 +1,66 @@
+/* ==========================================
+   تنسيقات الجولة التعريفية (Tutorial)
+   ========================================== */
+.tutorial-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9998; display: none;
+    transition: opacity 0.3s ease;
+}
+.tutorial-overlay.active { display: block; animation: fadeIn 0.3s; }
+
+/* العنصر المضاء */
+.tutorial-highlight {
+    position: relative !important;
+    z-index: 9999 !important;
+    box-shadow: 0 0 0 4px var(--header-alt-color), 0 0 20px rgba(255, 255, 255, 0.4) !important;
+    background-color: var(--content-bg-color) !important;
+    border-radius: 8px !important;
+    pointer-events: none; /* منع النقر أثناء الجولة */
+    animation: pulseHighlight 1.5s infinite;
+}
+
+@keyframes pulseHighlight {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* صندوق الحوار / الشرح */
+.tutorial-dialog {
+    position: fixed;
+    bottom: 15%; /* في الأسفل ليكون واضحاً */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 400px;
+    display: none; flex-direction: column; gap: 15px;
+    border: 2px solid var(--header-color);
+    text-align: right;
+}
+.tutorial-dialog.active { display: flex; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+@keyframes slideUp {
+    from { bottom: 0; opacity: 0; }
+    to { bottom: 15%; opacity: 1; }
+}
+
+.tutorial-dialog h3 { margin: 0; color: var(--header-color); display: flex; align-items: center; gap: 8px; font-size: 1.2em;}
+.tutorial-dialog p { margin: 0; font-size: 0.95em; line-height: 1.6; }
+.tutorial-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.tutorial-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+.tutorial-btn-next { background: var(--header-alt-color); color: white; }
+.tutorial-btn-next:hover { opacity: 0.9; transform: translateY(-2px);}
+.tutorial-btn-skip { background: transparent; color: #7f8c8d; text-decoration: underline; padding: 10px;}
+.tutorial-progress { font-size: 0.8em; color: #7f8c8d; }
+
+/* تعديل للموبايل لمنع تغطية الشريط السفلي */
+@media (max-width: 768px) {
+    .tutorial-dialog { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}

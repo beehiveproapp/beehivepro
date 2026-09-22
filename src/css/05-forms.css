@@ -1,0 +1,53 @@
+/* --- Input Group Style for +/- Buttons --- */
+.input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+}
+.input-group input {
+    padding: 10px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    width: 100%;
+    text-align: center;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 16px;
+    flex-grow: 1;
+    /* إزالة أسهم التحديث الافتراضية */
+    -moz-appearance: textfield;
+}
+.input-group input::-webkit-outer-spin-button,
+.input-group input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.input-group button {
+    background-color: var(--header-alt-color);
+    color: white;
+    padding: 10px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 16px;
+    width: 40px;
+    flex-shrink: 0;
+}
+.input-group button:hover {
+    opacity: 0.8;
+    transform: none;
+}
+/* --- End Input Group Style --- */
+
+input, select, textarea {
+    padding: 10px; margin: 5px 0; border: 1px solid var(--border-color); border-radius: 6px; width: 100%;
+    background-color: var(--bg-color); color: var(--text-color); font-size: 16px;
+}
+button { background-color: var(--header-alt-color); color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+button:hover { opacity: 0.9; transform: translateY(-2px); }
+button:disabled { background-color: #95a5a6; cursor: not-allowed; transform: none; }

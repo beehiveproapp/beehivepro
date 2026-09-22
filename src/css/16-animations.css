@@ -1,0 +1,42 @@
+/* ==========================================
+   تأثيرات السحب والانزلاق للتبويبات
+   ========================================== */
+/* تأثيرات السحب المعكوسة */
+@keyframes slideInFromLeftRTL {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromRightRTL {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.tab-content.active.slide-left {
+    animation: slideInFromLeftRTL 0.3s ease-out;
+}
+.tab-content.active.slide-right {
+    animation: slideInFromRightRTL 0.3s ease-out;
+}
+
+/* في حال النقر العادي على الأزرار (بدون سحب) يظهر بتأثير تلاشي ناعم */
+.tab-content.active:not(.slide-left):not(.slide-right) {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 1. رفع الإشعارات في شاشات الموبايل لتتجاوز الشريط السفلي */
+@media (max-width: 768px) {
+    #notification-container {
+        bottom: 80px !important; /* مسافة تكفي لتجاوز شريط التنقل السفلي */
+    }
+}
+
+/* 2. تفعيل تأثيرات الانزلاق (Slide) لتبويبات نموذج الخلية الفرعية */
+.form-tab-content.active.slide-left {
+    animation: slideInFromLeftRTL 0.3s ease-out;
+}
+.form-tab-content.active.slide-right {
+    animation: slideInFromRightRTL 0.3s ease-out;
+}
+.form-tab-content.active:not(.slide-left):not(.slide-right) {
+    animation: fadeIn 0.3s ease-out forwards;
+}

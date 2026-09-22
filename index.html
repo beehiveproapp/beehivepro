@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>إدارة المناحل المتقدمة (نسخة احترافية)</title>
+    
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#f39c12">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- كل المكتبات (Firebase، Chart.js، Font Awesome) أصبحت الآن تُدار عبر npm -->
+    <!-- وتُستورد داخل ملفات src/*.js، ولم تعد تُحمّل عبر وسوم <script>/<link> من CDN. -->
+    <!-- التنسيقات: يجمعها Vite تلقائياً من src/css/main.css و src/main.js -->
+</head>
+<body>
+
+<div id="firebase-modal">
+    <div id="firebase-box">
+        <h2 style="color:var(--header-color);"><i class="fas fa-cloud"></i> مزامنة السحابة</h2>
+        <div id="firebase-status" class="auth-status signed-out">
+            <p>أنت غير مسجل الدخول</p>
+            <p style="font-size: 0.9em;">تسجيل الدخول اختياري للمزامنة التلقائية بين الأجهزة</p>
+        </div>
+        <div class="auth-buttons">
+            <button data-action="sign-in-google" style="background-color: #DB4437;">
+                <i class="fab fa-google"></i> تسجيل الدخول بحساب Google
+            </button>
+            <button data-action="sign-in-email" style="background-color: var(--info-color);">
+                <i class="fas fa-envelope"></i> تسجيل الدخول بالبريد الإلكتروني
+            </button>
+            <button data-action="sign-up-email" style="background-color: var(--success-color);">
+                <i class="fas fa-user-plus"></i> إنشاء حساب جديد
+            </button>
+            <button data-action="skip-login" style="background-color: #7f8c8d;">
+                <i class="fas fa-forward"></i> تخطي وتشغيل محلياً
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="main-content-wrapper" id="main-app-content">
+    <div class="sidebar" id="main-sidebar">
+        <div class="sidebar-header">
+            <button class="menu-toggle-btn" data-action="toggle-sidebar"><i class="fas fa-bars"></i></button>
+            <h2><i class="fas fa-box-archive"></i> <span class="sidebar-text">إدارة المناحل</span></h2>
+        </div>
+        <div class="sidebar-main">
+            <div class="menu-group">
+                <div class="menu-group-header" data-action="toggle-menu"><i class="fas fa-map-marker-alt"></i> <span class="sidebar-text">المواقع</span></div>
+                <div class="menu-group-content" id="sites-menu-content"></div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" data-action="toggle-menu"><i class="fas fa-chart-pie"></i> <span class="sidebar-text">التحليلات</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" data-action="show-main-tab" data-tab="analysis-tab"><i class="fas fa-search"></i> <span class="sidebar-text">تحليل متقدم</span></button>
+                    <button class="menu-button" data-action="show-global-stats"><i class="fas fa-globe"></i> <span class="sidebar-text">إحصائيات شاملة</span></button>
+                    <button class="menu-button" data-action="show-site-comparison"><i class="fas fa-balance-scale"></i> <span class="sidebar-text">مقارنة المواقع</span></button>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" data-action="toggle-menu"><i class="fas fa-database"></i> <span class="sidebar-text">البيانات</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" data-action="import-data"><i class="fas fa-file-import"></i> <span class="sidebar-text">استيراد بيانات</span></button>
+                    <button class="menu-button" data-action="export-data"><i class="fas fa-file-export"></i> <span class="sidebar-text">تصدير بيانات</span></button>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-group-header" data-action="toggle-menu"><i class="fas fa-satellite-dish"></i> <span class="sidebar-text">التواصل</span></div>
+                <div class="menu-group-content">
+                    <button class="menu-button" data-action="open-honeycom"><i class="fas fa-paper-plane"></i> <span class="sidebar-text">خلية التواصل</span></button>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+             <button class="menu-button" data-action="show-main-tab" data-tab="settings-tab">
+                 <i class="fas fa-cog"></i> <span class="sidebar-text">الإعدادات</span>
+             </button>
+             
+             <button class="menu-button" data-action="show-firebase-auth">
+                 <i class="fas fa-cloud"></i> <span class="sidebar-text">المزامنة</span>
+             </button>
+             
+             <button class="menu-button" data-action="confirm-sign-out" style="color: var(--danger-color);">
+                 <i class="fas fa-sign-out-alt"></i> <span class="sidebar-text">خروج</span>
+             </button>
+        </div>
+    </div> <div id="mobile-sidebar-overlay" class="sidebar-overlay" data-action="toggle-mobile-sidebar"></div>
+
+    <nav id="bottom-nav" class="bottom-nav-bar">
+        <button class="bottom-nav-btn active" data-action="switch-mobile-tab" data-tab="dashboard-tab">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>الرئيسية</span>
+        </button>
+        <button class="bottom-nav-btn" data-action="switch-mobile-tab" data-tab="hives-tab">
+            <i class="fas fa-edit"></i>
+            <span>الخلايا</span>
+        </button>
+        <button class="bottom-nav-btn star-feature" data-action="switch-mobile-tab" data-tab="stars-tab">
+            <i class="fas fa-star"></i>
+            <span>النجوم</span>
+        </button>
+        <button class="bottom-nav-btn" data-action="switch-mobile-tab" data-tab="analysis-tab">
+            <i class="fas fa-chart-line"></i>
+            <span>التحليل</span>
+        </button>
+        <button class="bottom-nav-btn" data-action="toggle-mobile-sidebar">
+            <i class="fas fa-bars"></i>
+            <span>المزيد</span>
+        </button>
+    </nav>
+    
+    <div class="content-area">
+        <div class="container">
+            <h1 id="active-location-title" style="text-align: center; margin-top: 0;"></h1>
+
+            <div id="standard-view-wrapper">
+                <div class="main-tabs">
+                    <button class="tab-button active" data-action="show-main-tab" data-tab="dashboard-tab"><i class="fas fa-tachometer-alt"></i> لوحة المعلومات</button>
+                    <button class="tab-button" data-action="show-main-tab" data-tab="hives-tab"><i class="fas fa-edit"></i> قائمة الخلايا والإدخال</button>
+                    <button class="tab-button star-feature" id="stars-menu-btn" data-action="show-main-tab" data-tab="stars-tab"><i class="fas fa-star"></i> النجوم الفلكية</button>
+                    <button class="tab-button" id="analysis-menu-btn" data-action="show-main-tab" data-tab="analysis-tab"><i class="fas fa-chart-line"></i> التحليلات المتقدمة</button>
+                    <button class="tab-button" id="settings-menu-btn" data-action="show-main-tab" data-tab="settings-tab"><i class="fas fa-cog"></i> الإعدادات</button>
+                </div>
+
+                <div id="dashboard-tab" class="tab-content active">
+                    <div id="sync-status-indicator" class="auth-status signed-out" style="margin-bottom: 20px; display: none;">
+                        <i class="fas fa-cloud"></i> <span id="sync-status-text">جاري المزامنة...</span>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="kpi-card"><h3>إجمالي الخلايا</h3><div id="db-total-hives" class="kpi-value">0</div></div>
+                        <div class="kpi-card"><h3>متوسط الإطارات</h3><div id="db-avg-frames" class="kpi-value">0</div></div>
+                        <div class="kpi-card"><h3>خلايا قوية (&gt;6 إطارات)</h3><div id="db-strong-hives" class="kpi-value strong">0%</div></div>
+                        <div class="kpi-card"><h3>خلايا ضعيفة (&lt;4 إطارات)</h3><div id="db-weak-hives" class="kpi-value weak">0%</div></div>
+                    </div>
+                    
+<div id="site-recommendations-container" class="recommendation-feature" style="margin-top: 20px;">
+    <h3><i class="fas fa-robot"></i> المستشار الذكي</h3> <div id="site-recommendations-list"></div>
+</div>
+
+                    <div class="dashboard-grid" style="margin-top: 20px;">
+                        <div class="chart-container">
+                            <h3>توزيع حالة الملكات</h3>
+                            <div class="pie-chart" id="queen-pie-chart"><div class="pie-chart-inner"></div></div>
+                            <ul class="chart-legend">
+                                <li><span class="legend-color" style="background:var(--success-color);"></span>ملكة</li>
+                                <li><span class="legend-color" style="background:var(--warning-color);"></span>بدون ملكة</li>
+                                <li><span class="legend-color" style="background:var(--danger-color);"></span>مكذبة</li>
+                            </ul>
+                        </div>
+                        <div class="todo-container">
+                            <h3><i class="fas fa-tasks"></i> قائمة المهام للموقع</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="todo-input" placeholder="أضف مهمة جديدة...">
+                                <button data-action="add-task">إضافة</button>
+                            </div>
+                            <ul id="todo-list"></ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="hives-tab" class="tab-content">
+                    <div class="quick-actions-container">
+                        <h2>إضافة / تعديل خلية</h2>
+                        <div>
+                           <button data-action="refresh-ui" style="background-color: var(--info-color);" title="تحديث البيانات يدوياً"><i class="fas fa-sync-alt"></i> تحديث</button>
+                           <button id="quick-actions-btn" data-action="toggle-quick-actions-menu">إجراءات سريعة <i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div id="quick-actions-menu">
+                            <div class="quick-action-item" data-action="quick-action" data-frames="1" data-message="تم إضافة شمع اساس." data-stock-type="frames" data-stock="0"><i class="fas fa-plus" style="color:var(--success-color);"></i> +شمع اساس (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="1" data-message="تم إضافة إطار ممطوط." data-stock-type="frames" data-stock="0"><i class="fas fa-plus" style="color:var(--success-color);"></i> +ممطوط (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="1" data-message="تم إضافة إطار حلب." data-stock-type="frames" data-stock="0"><i class="fas fa-plus" style="color:var(--success-color);"></i> +حلب (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="1" data-message="تم إضافة إطار عسل." data-stock-type="honey" data-stock="1"><i class="fas fa-plus" style="color:var(--success-color);"></i> +عسل (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="1" data-message="تم إضافة إطار كرس." data-stock-type="pollen" data-stock="1"><i class="fas fa-plus" style="color:var(--success-color);"></i> +كرس (فوري)</div>
+                            <hr style="margin: 2px 0; border-color: var(--border-color);">
+                            <div class="quick-action-item" data-action="add-review-task" data-label="شمع اساس" data-frames="0"><i class="fas fa-flag" style="color:var(--info-color);"></i> علم لوضع شمع أساس</div>
+                            <div class="quick-action-item" data-action="add-review-task" data-label="تقسيم" data-frames="0"><i class="fas fa-cut" style="color:var(--warning-color);"></i> علم للتقسيم</div>
+                            <hr style="margin: 2px 0; border-color: var(--border-color);">
+                            <div class="quick-action-item" data-action="quick-action" data-frames="-1" data-message="تم سحب إطار شمع اساس." data-stock-type="frames" data-stock="0"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -شمع اساس (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="-1" data-message="تم سحب إطار ممطوط." data-stock-type="frames" data-stock="0"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -ممطوط (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="-1" data-message="تم سحب إطار حلب." data-stock-type="frames" data-stock="0"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -حلب (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="-1" data-message="تم سحب إطار عسل." data-stock-type="honey" data-stock="-1"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -عسل (فوري)</div>
+                            <div class="quick-action-item" data-action="quick-action" data-frames="-1" data-message="تم سحب إطار كرس." data-stock-type="pollen" data-stock="-1"><i class="fas fa-minus" style="color:var(--danger-color);"></i> -كرس (فوري)</div>
+                        </div>
+                        </div>
+                    
+                    <div class="form-tabs">
+                        <button class="form-tab-button active" data-action="show-form-tab" data-tab="main-info"><i class="fas fa-home"></i> معلومات أساسية</button>
+                        <button class="form-tab-button" data-action="show-form-tab" data-tab="queen-info"><i class="fas fa-chess-queen"></i> بيانات الملكة</button>
+                        <button class="form-tab-button" data-action="show-form-tab" data-tab="storage-info"><i class="fas fa-archive"></i> المخزون</button>
+                    </div>
+
+                    <div id="main-info-form" class="form-tab-content active">
+                        <div class="form-grid">
+                            <div><label for="hive-id">رقم الخلية:</label><input type="number" id="hive-id" placeholder="123" min="1"></div>
+                            
+                            <div>
+                                <label for="frames">عدد الإطارات:</label>
+                                <div class="input-group">
+                                    <button type="button" data-action="change-value" data-target="frames" data-delta="-1">-</button>
+                                    <input type="number" id="frames" min="1" max="10" value="5">
+                                    <button type="button" data-action="change-value" data-target="frames" data-delta="1">+</button>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                    <div id="queen-info-form" class="form-tab-content">
+                        <div class="form-grid">
+                            <div><label for="queen-status">حالة الملكة:</label><select id="queen-status"><option value="ملكة">بها ملكة</option><option value="بدون ملكة">بدون ملكة</option><option value="مكذبة">مكذبة</option></select></div>
+                            <div><label for="queen-year">سنة الملكة:</label><input type="number" id="queen-year" placeholder="2024" min="2020"></div>
+                            <div><label for="queen-marked">هل الملكة معلمة؟</label><select id="queen-marked"><option value="لا">لا</option><option value="نعم">نعم</option></select></div>
+                        </div>
+                    </div>
+                    <div id="storage-info-form" class="form-tab-content">
+                         <div class="form-grid">
+                            <div>
+                                <label for="honey-frames">إطارات عسل مختوم:</label>
+                                <div class="input-group">
+                                    <button type="button" data-action="change-value" data-target="honey-frames" data-delta="-1">-</button>
+                                    <input type="number" id="honey-frames" min="0" value="0">
+                                    <button type="button" data-action="change-value" data-target="honey-frames" data-delta="1">+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="pollen-frames">إطارات كرس (خبز النحل):</label>
+                                <div class="input-group">
+                                    <button type="button" data-action="change-value" data-target="pollen-frames" data-delta="-1">-</button>
+                                    <input type="number" id="pollen-frames" min="0" value="0">
+                                    <button type="button" data-action="change-value" data-target="pollen-frames" data-delta="1">+</button>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;"><label for="notes">إضافة ملاحظة جديدة (سيتم حفظها مع التاريخ):</label><textarea id="notes" rows="3" placeholder="مثال: تم إضافة إطار حضنة"></textarea></div>
+                    <button data-action="save-hive"><i class="fas fa-save"></i> إضافة سجل فحص جديد</button>
+                    <hr>
+                    <h2><i class="fas fa-archive"></i> قائمة الخلايا (آخر فحص)</h2>
+<div class="hive-list-controls" style="flex-direction: column; align-items: stretch; gap: 10px;">
+    <input type="text" id="hive-filter-input" placeholder="🔎 بحث بالرقم أو في الملاحظات...">
+<div class="quick-filters" id="quick-filters-container">
+    <button class="filter-btn" data-action="sort-table" data-col="0"><i class="fas fa-sort-numeric-down"></i> فرز برقم الخلية</button>
+    <button class="filter-btn" data-action="sort-table" data-col="1"><i class="fas fa-sort-amount-down"></i> فرز بعدد الإطارات</button>
+</div>
+</div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all-hives" title="تحديد الكل"></th>
+                                    <th class="sortable" data-action="sort-table" data-col="0">الرقم</th>
+                                    <th class="sortable" data-action="sort-table" data-col="1">الإطارات</th>
+                                    <th class="sortable" data-action="sort-table" data-col="2">صحة الخلية</th>
+                                    <th class="sortable" data-action="sort-table" data-col="3">حالة الملكة</th>
+                                    <th class="sortable" data-action="sort-table" data-col="4">المخزون</th> <th>آخر ملاحظة</th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hives-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="stars-tab" class="tab-content">
+                    <h2><i class="fas fa-star"></i> النجوم الفلكية والمواسم النحلية</h2>
+                    <div id="star-calculator-content">
+                        </div>
+                </div>
+
+                <div id="analysis-tab" class="tab-content">
+                    <h2><i class="fas fa-chart-line"></i> التحليلات المتقدمة (لخلية واحدة)</h2>
+                    <div class="analysis-grid">
+                        <div class="chart-section">
+                            <div style="margin-bottom: 15px;">
+                                <label for="hive-analysis-selector" style="font-weight: bold;">اختر خلية لعرض سجلها التاريخي:</label>
+                                <select id="hive-analysis-selector" data-action="update-analysis-charts"></select>
+                            </div>
+                            <div class="main-tabs" style="border-bottom: none;">
+                                <button class="tab-button active" data-action="show-chart" data-chart="frames-trend">قوة الخلية</button>
+                                <button class="tab-button" data-action="show-chart" data-chart="health-trend">درجة الصحة</button>
+                                <button class="tab-button" data-action="show-chart" data-chart="queen-age">عمر الملكة vs الإطارات</button>
+                            </div>
+                            <div id="frames-trend-chart" class="chart-wrapper active-chart"><canvas id="framesTrendCanvas"></canvas></div>
+                            <div id="health-trend-chart" class="chart-wrapper"><canvas id="healthTrendCanvas"></canvas></div>
+                            <div id="queen-age-chart" class="chart-wrapper"><canvas id="queenAgeCanvas"></canvas></div>
+                        </div>
+<div class="recommendations-section">
+    <h3><i class="fas fa-robot"></i> المستشار الذكي (لخلية محددة)</h3> <div id="recommendations-list"><p style="text-align: center; color: var(--text-color);">جاري تحليل البيانات...</p></div>
+</div>
+</div>
+                </div>
+
+                <div id="settings-tab" class="tab-content">
+                    <h2><i class="fas fa-cog"></i> إعدادات التطبيق</h2>
+                    <div class="settings-card">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label for="theme-checkbox"><i class="fas fa-moon"></i> الوضع الليلي</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="theme-checkbox" data-action="toggle-theme">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                         <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label for="stars-feature-checkbox"><i class="fas fa-star"></i> النجوم الفلكية</label>
+                             <label class="toggle-switch">
+                                <input type="checkbox" id="stars-feature-checkbox" data-action="toggle-stars-feature">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+<div class="settings-card">
+     <div style="display:flex; align-items:center; justify-content:space-between;">
+        <label for="recs-feature-checkbox"><i class="fas fa-robot"></i> المستشار الذكي</label> <label class="toggle-switch">
+            <input type="checkbox" id="recs-feature-checkbox" data-action="toggle-recs-feature">
+            <span class="slider"></span>
+        </label>
+    </div>
+</div>
+                    <div class="settings-card">
+                        <h3><i class="fas fa-cloud"></i> المزامنة السحابية</h3>
+                        <div id="current-sync-status" class="auth-status signed-out" style="margin-bottom: 10px;">
+                            <p>الحالة: غير مسجل</p>
+                        </div>
+                        <button data-action="show-firebase-auth" style="background-color: var(--info-color);">
+                            <i class="fas fa-cloud-upload-alt"></i> إدارة المزامنة السحابية
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="global-stats-view" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><i class="fas fa-chart-line"></i> عرض الرسوم البيانية المتطورة</h2>
+                    <button data-action="go-back-to-dashboard"><i class="fas fa-arrow-left"></i> العودة للوحة التحكم</button>
+                </div>
+                <div class="analysis-grid">
+                    <div class="chart-container"><h3>توزيع قوة الخلايا (الحالي)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalStrengthCanvas"></canvas></div></div>
+                    <div class="chart-container"><h3>توزيع أعمار الملكات</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalQueenAgeCanvas"></canvas></div></div>
+                </div>
+                <div class="analysis-grid" style="margin-top: 20px;">
+                    <div class="chart-container" style="grid-column: 1 / -1;"><h3>متوسط قوة المنحل شهرياً</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="globalWeeklyAvgCanvas"></canvas></div></div>
+                </div>
+            </div>
+            
+            <div id="site-comparison-view" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><i class="fas fa-balance-scale"></i> مقارنة استراتيجية بين المواقع</h2>
+                    <button data-action="go-back-to-dashboard"><i class="fas fa-arrow-left"></i> العودة للوحة التحكم</button>
+                </div>
+                <div class="analysis-grid">
+                    <div class="chart-container"><h3>مقارنة متوسط قوة الخلايا (بالإطارات)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteAvgStrengthCanvas"></canvas></div></div>
+                    <div class="chart-container"><h3>توزيع قوة الخلايا بين المواقع (%)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteStrengthDistCanvas"></canvas></div></div>
+                </div>
+                 <div class="analysis-grid" style="margin-top: 20px;">
+                    <div class="chart-container" style="grid-column: 1 / -1;"><h3>مقارنة متوسط مخزون العسل (بالإطارات)</h3><div class="chart-wrapper active-chart" style="min-height: 400px;"><canvas id="siteAvgHoneyCanvas"></canvas></div></div>
+                </div>
+            </div>
+
+        </div>
+        <footer class="app-footer">
+            <p>حقوق الطبع والنشر &copy; 2025 إدارة المناحل الاحترافية. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+</div>
+
+<div class="modal-overlay" id="custom-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-title"></h3>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modal-message"></p>
+            <div id="modal-custom-content"></div>
+        </div>
+        <div class="modal-buttons">
+            <button id="modal-cancel-btn" style="background-color: #7f8c8d;">إلغاء</button>
+            <button id="modal-confirm-btn" style="background-color: var(--danger-color);">تأكيد</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="honeycom-modal">
+    <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-bacon"></i> خلية التواصل (Honeycom)</h3>
+            <button class="modal-close-btn" data-action="close-honeycom">&times;</button>
+        </div>
+        <div class="modal-body" id="honeycom-body">
+            <p style="text-align: center;">اضغط على إحدى العيون السداسية الفارغة لترك رسالتك للمطور.</p>
+            <div class="honeycomb-grid">
+                </div>
+            <div id="honeycom-form" class="feature-hidden" style="margin-top: 15px;">
+                <select id="honeycom-type" style="margin-bottom: 10px;">
+                    <option value="suggestion">💡 اقتراح ميزة جديدة</option>
+                    <option value="bug_report">🐞 إبلاغ عن مشكلة فنية</option>
+                    <option value="question">❓ استفسار عام</option>
+                    <option value="thanks">❤️ شكر وتقدير</option>
+                </select>
+                <textarea id="honeycom-message" rows="4" placeholder="اكتب رسالتك هنا..."></textarea>
+                 <div style="display: flex; align-items: center; margin-top: 10px; font-size: 0.9em;">
+                    <input type="checkbox" id="honeycom-publish-ok" style="width: auto; margin-left: 8px;">
+                    <label for="honeycom-publish-ok">أوافق على نشر هذا الاقتراح بشكل مجهول.</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button data-action="close-honeycom" style="background-color: #7f8c8d;">إغلاق</button>
+            <button data-action="send-honeycom-message" id="honeycom-send-btn" class="feature-hidden" style="background-color: var(--header-color);"><i class="fas fa-paper-plane"></i> إرسال</button>
+        </div>
+    </div>
+</div>
+
+    <div id="hive-strength-popup" class="popup-overlay popup-hidden">
+        <div class="popup-content shadow">
+            <div class="popup-header">
+                <span class="close-popup-btn">&times;</span>
+                <h3 class="popup-title">تطور قوة الخلية (بالإطارات)</h3>
+                <p id="popup-hive-number" style="margin: 0; color: #f59e0b; font-weight: bold;"></p>
+            </div>
+            <div class="popup-body">
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="strength-popup-chart"></canvas>
+                </div>
+                <p class="popup-note">اضغط على أيقونة الإغلاق للخروج.</p>
+            </div>
+        </div>
+    </div>
+
+<div id="floating-selection-bar" class="floating-selection-bar">
+    <span id="selection-count-text">تم تحديد 0 خلايا</span>
+    <button data-action="show-quick-actions-modal"><i class="fas fa-bolt"></i> إجراء سريع</button>
+</div>
+
+<div id="notification-container"></div>
+
+<div id="tutorial-overlay" class="tutorial-overlay"></div>
+<div id="tutorial-dialog" class="tutorial-dialog">
+    <h3><i class="fas fa-magic"></i> <span id="tutorial-title"></span></h3>
+    <p id="tutorial-text"></p>
+    <div class="tutorial-controls">
+        <button id="tutorial-skip" class="tutorial-btn-skip" data-action="end-tutorial">تخطي</button>
+        <span id="tutorial-progress" class="tutorial-progress"></span>
+        <button id="tutorial-next" class="tutorial-btn tutorial-btn-next" data-action="next-tutorial-step">التالي <i class="fas fa-chevron-left"></i></button>
+    </div>
+</div>
+
+<!-- نقطة دخول التطبيق: Vite يجمع كل ملفات src/ في ملف واحد مضغوط عند البناء -->
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

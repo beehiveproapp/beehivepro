@@ -1,0 +1,39 @@
+/* CSS: تم الحفاظ على الأنماط الأصلية مع إضافة متغيرات الوضع الليلي */
+:root {
+    /* ألوان النمط الكهرماني الجديد */
+    --bg-color: #FFFBEB; /* بيج فاتح جداً مريح للعين في الشمس */
+    --content-bg-color: #FFFFFF;
+    --sidebar-bg-color: #451A03; /* بني داكن جداً يبرز اللون الكهرماني */
+    --sidebar-text-color: #FEF3C7;
+    --text-color: #451A03; /* بني داكن للقراءة الواضحة */
+    
+    --header-color: #D97706; /* لون العسل الداكن */
+    --header-alt-color: #F59E0B; /* لون العسل الفاتح للأزرار */
+    --border-color: #FDE68A; /* أصفر باهت للحدود */
+    --shadow-color: rgba(217, 119, 6, 0.1);
+    
+    /* ألوان الحالات (معدلة لتناسب السمة) */
+    --danger-color: #EF4444;
+    --success-color: #10B981;
+    --warning-color: #F59E0B;
+    --info-color: #3B82F6;
+    
+    --strong-hive-color: #059669;
+    --weak-hive-color: #DC2626;
+    --excess-color: #8B5CF6;
+    --deficit-color: #EA580C;
+}
+
+body.dark-mode {
+    --bg-color: #0F172A; /* أزرق ليلي عميق */
+    --content-bg-color: #1E293B;
+    --sidebar-bg-color: #020617;
+    --sidebar-text-color: #94A3B8;
+    --text-color: #F1F5F9;
+    --border-color: #334155;
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    
+    /* جعل ألوان العسل أكثر سطوعاً في الوضع الليلي */
+    --header-color: #FBBF24; 
+    --header-alt-color: #F59E0B;
+}

@@ -1,0 +1,128 @@
+/* ==========================================
+   1. تحسينات UI/UX والفلاتر السريعة
+   ========================================== */
+.quick-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    scrollbar-width: none; /* إخفاء شريط التمرير */
+}
+.quick-filters::-webkit-scrollbar { display: none; }
+
+.filter-btn {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+.filter-btn:hover {
+    border-color: var(--header-alt-color);
+    color: var(--header-alt-color);
+    transform: translateY(-1px);
+}
+.filter-btn.active {
+    background-color: var(--header-alt-color);
+    color: white;
+    border-color: var(--header-alt-color);
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+/* ==========================================
+   2. تحويل الجدول إلى بطاقات (Responsive Cards) للموبايل
+   ========================================== */
+@media (max-width: 768px) {
+    .table-wrapper table, 
+    .table-wrapper thead, 
+    .table-wrapper tbody, 
+    .table-wrapper th, 
+    .table-wrapper td, 
+    .table-wrapper tr {
+        display: block;
+        width: 100%;
+    }
+    
+    /* إخفاء ترويسة الجدول بصرياً مع الاحتفاظ بها لقوارئ الشاشة */
+    .table-wrapper thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    /* تصميم الصف كبطاقة */
+    .table-wrapper tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px;
+        background: var(--bg-color);
+        box-shadow: 0 4px 10px var(--shadow-color);
+        position: relative;
+    }
+    
+    /* تصميم الخلايا داخل البطاقة */
+    .table-wrapper td {
+        border: none;
+        border-bottom: 1px dashed var(--border-color);
+        position: relative;
+        padding: 10px 10px 10px 40%; 
+        text-align: left;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+    
+    /* إضافة عناوين الأعمدة كعناصر وهمية (Pseudo-elements) */
+    .table-wrapper td::before {
+        content: attr(data-label);
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 35%;
+        white-space: nowrap;
+        font-weight: bold;
+        color: var(--header-color);
+        text-align: right;
+    }
+    
+    /* الخلية الأولى (مربع التحديد والرقم) */
+    .table-wrapper td:nth-child(1) {
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 5px;
+        justify-content: flex-start;
+        padding-right: 10px;
+    }
+    .table-wrapper td:nth-child(1)::before { display: none; }
+    
+    /* خلية الملاحظات - إصلاح العلامة المائية للموبايل */
+    .table-wrapper td.notes-cell {
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    .table-wrapper td.notes-cell pre {
+        text-align: right;
+        width: 100%;
+    }
+    .notes-cell::before { display: none; } /* إخفاء الرقم المائي في الموبايل لعدم التشويش */
+    
+    /* الخلية الأخيرة (الأزرار) */
+    .table-wrapper td:last-child {
+        border-bottom: 0;
+        justify-content: center;
+        padding: 10px 0 0 0;
+        margin-top: 5px;
+    }
+    .table-wrapper td:last-child::before { display: none; }
+    
+    /* تعديل عناصر داخل الخلايا */
+    .health-score { margin-left: 0; margin-right: auto; }
+}

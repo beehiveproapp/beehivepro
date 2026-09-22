@@ -1,0 +1,7 @@
+.table-wrapper { width: 100%; overflow-x: auto; margin-top: 20px; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
+th, td { border: 1px solid var(--border-color); padding: 12px; text-align: right; vertical-align: middle; }
+th { background-color: var(--bg-color); color: var(--text-color); font-weight: bold; }
+th.sortable { cursor: pointer; }
+td.actions-cell { min-width: 150px; text-align: center; }
+.health-score { font-weight: bold; text-align: center; padding: 5px; border-radius: 5px; color: white; }

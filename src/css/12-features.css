@@ -1,0 +1,31 @@
+.star-season-card { background: var(--bg-color); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-right: 5px solid var(--header-color); }
+.star-season-card h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+.star-season-card .date-range { color: var(--text-color); font-style: italic; font-size: 0.9em; margin-bottom: 10px;}
+.star-season-card .tips-list { padding-right: 20px; }
+.upcoming-seasons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+.upcoming-card { background: var(--bg-color); padding: 15px; border-radius: 8px; }
+.upcoming-card h4 { margin-top: 0; color: var(--header-alt-color); }
+.upcoming-card p { font-size: 0.9em; margin: 0; }
+.settings-card { padding: 15px; background:var(--bg-color); border-radius:8px; margin-bottom: 15px; }
+
+/* -- Modern Settings Toggles -- */
+.toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #7f8c8d; transition: .4s; border-radius: 28px; }
+.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--header-alt-color); }
+input:checked + .slider:before { transform: translateX(22px); }
+
+/* -- Modern Hive Form Tabs -- */
+.form-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+.form-tab-button { background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--text-color); border-bottom: 3px solid transparent; font-size: 15px; display: inline-flex; align-items: center; gap: 6px; }
+.form-tab-button.active { color: var(--header-alt-color); border-bottom-color: var(--header-alt-color); }
+.form-tab-content { display: none; }
+.form-tab-content.active { display: block; animation: fadeIn 0.5s; }
+
+.hive-list-controls { display: flex; gap: 15px; margin-bottom: 15px; align-items: center; }
+#hive-filter-input { max-width: 300px; margin: 0; }
+
+/* -- Copyright Footer -- */
+.app-footer { text-align: center; padding: 15px; margin-top: 20px; font-size: 0.9em; color: var(--text-color); opacity: 0.7; }
+.app-footer p { margin: 0; }
